@@ -89,123 +89,129 @@
       
       <!-- TAB: PER-USER CHAT INBOX -->
       <section id="tab-chats" class="tab-pane active">
-        <div class="panel-card" style="padding:0; overflow:hidden;">
-          <div class="chat-inbox-header">
-            <div class="chat-inbox-header-left">
-              <h2>📥 Customer Chats</h2>
-              <span class="chat-inbox-stats" id="chatInboxStats">0 conversations</span>
+        <div class="chat-inbox-wrapper">
+          <!-- TOP BAR: compact single row -->
+          <div class="chat-topbar">
+            <div class="chat-topbar-left">
+              <h2>📥 Chats</h2>
+              <span class="chat-stat-pill" id="chatInboxStats">0 chats</span>
+              <button class="chat-sync-mini" id="metaSyncBtn" title="Sync from Meta">🔁 Sync</button>
             </div>
-            <div class="chat-inbox-header-right">
+            <div class="chat-topbar-right">
               <div class="chat-search-box">
                 <span class="chat-search-icon">🔍</span>
-                <input type="text" id="chatSearchInput" placeholder="Search messages, names..." class="chat-search-input">
-                <button class="chat-search-clear" id="chatSearchClear" style="display:none;">✕</button>
+                <input type="text" id="chatSearchInput" placeholder="Search..." class="chat-search-input">
               </div>
-              <button class="btn btn-ghost btn-sm" id="chatRefreshBtn">↻ Refresh</button>
+              <button class="btn btn-ghost btn-xs" id="chatRefreshBtn">↻</button>
             </div>
           </div>
 
-          <div id="metaSyncPanel" style="padding:10px 16px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:rgba(245,158,11,0.06);">
-            <span style="font-size:22px;">🔁</span>
-            <div style="flex:1; min-width:220px;">
-              <div style="font-size:13.5px; font-weight:600; color:#eef1f7;" id="metaSyncTitle">Meta Sync</div>
-              <div style="font-size:12.5px; color:#8a93a8;" id="metaSyncStatus">Checking…</div>
+          <!-- Meta Sync Help (collapsed by default) -->
+          <div id="metaSyncHelp" class="chat-sync-help" style="display:none;">
+            <div class="sync-help-content">
+              <p><strong>One-time setup (5 min):</strong></p>
+              <ol>
+                <li>developers.facebook.com/apps → your app → <strong>App Settings → Advanced</strong> → copy App Secret</li>
+                <li>Set <code>META_APP_SECRET</code> in <code>.env</code> → <code>pm2 restart agent</code></li>
+                <li>Enable <strong>WhatsApp Business Management API</strong> product</li>
+                <li>Submit/approve <code>whatsapp_business_management</code> in App Review</li>
+              </ol>
+              <button class="btn btn-ghost btn-xs" id="metaSyncHelpClose">Got it</button>
             </div>
-            <button type="button" class="btn btn-sm" id="metaSyncBtn" style="background:linear-gradient(135deg,#25D366,#128C7E); color:#04140b; font-weight:700;">Sync from Meta</button>
-          </div>
-          <div id="metaSyncHelp" style="display:none; padding:12px 16px; border-bottom:1px solid var(--border,#262b3d); background:rgba(245,158,11,0.05);">
-            <div style="font-size:13px; color:#f0e6d2; margin-bottom:8px;">To sync conversations from Meta, the app needs one permission. Do this once (5 min):</div>
-            <ol style="margin:0 0 10px; padding-left:20px; font-size:12.5px; color:#c8cfdd; line-height:1.7;">
-              <li>Open <strong>developers.facebook.com/apps</strong> → your app (pakcloudrdpapp).</li>
-              <li>Left menu → <strong>App Settings → Advanced</strong> → copy your <strong>App Secret</strong>.</li>
-              <li>In the server file <code>/var/www/codebyjawad.com/agent/.env</code>, set <code>META_APP_SECRET=...your secret</code> then run <code>pm2 restart agent</code>.</li>
-              <li>Left menu → find <strong>WhatsApp → API Setup</strong>. The app must have the <strong>WhatsApp Business Management API</strong> product enabled.</li>
-              <li>In <strong>App Review → Permissions and Features</strong>, submit/approve the <strong>whatsapp_business_management</strong> permission (request Advanced Access).</li>
-              <li>Regenerate the system-user access token in <strong>Business Settings → System Users</strong> after granting, then update <code>WHATSAPP_ACCESS_TOKEN</code> in <code>.env</code> and <code>pm2 restart agent</code>.</li>
-            </ol>
-            <button type="button" class="btn btn-ghost btn-sm" id="metaSyncHelpClose">Got it</button>
           </div>
 
+          <!-- FILTER BAR: single row -->
+          <div class="chat-filter-bar">
+            <div class="filter-row">
+              <div class="inbox-filter-group" id="inboxFilterChannel">
+                <button type="button" class="if-btn active" data-ich="all">All</button>
+                <button type="button" class="if-btn" data-ich="WhatsApp">📱 WA</button>
+                <button type="button" class="if-btn" data-ich="Messenger">💬 MSG</button>
+                <button type="button" class="if-btn" data-ich="Instagram">📸 IG</button>
+              </div>
+              <div class="filter-sep"></div>
+              <div class="inbox-filter-group" id="inboxFilterStatus">
+                <button type="button" class="if-btn active" data-ist="all">All</button>
+                <button type="button" class="if-btn" data-ist="needs">⏳ Pending</button>
+                <button type="button" class="if-btn" data-ist="ai">🤖 Handled</button>
+              </div>
+              <div class="filter-sep"></div>
+              <div class="inbox-filter-group" id="inboxFilterDate">
+                <input type="date" id="chatDateFrom" class="if-date">
+                <span class="if-date-sep">–</span>
+                <input type="date" id="chatDateTo" class="if-date">
+              </div>
+              <span class="inbox-filter-count" id="chatFilterCount"></span>
+            </div>
+          </div>
+
+          <!-- MAIN 3-COLUMN INBOX -->
           <div class="inbox" id="chatInbox">
+            <!-- LEFT: Thread List -->
             <div class="inbox-list" id="chatThreadList">
-              <div class="inbox-filters">
-                <div class="inbox-filter-group" id="inboxFilterChannel">
-                  <button type="button" class="if-btn active" data-ich="all">All</button>
-                  <button type="button" class="if-btn" data-ich="WhatsApp">📱 WA</button>
-                  <button type="button" class="if-btn" data-ich="Messenger">💬 MSG</button>
-                  <button type="button" class="if-btn" data-ich="Instagram">📸 IG</button>
-                </div>
-                <div class="inbox-filter-group" id="inboxFilterStatus">
-                  <button type="button" class="if-btn active" data-ist="all">All</button>
-                  <button type="button" class="if-btn" data-ist="needs">⏳ Needs attention</button>
-                  <button type="button" class="if-btn" data-ist="ai">🤖 AI handled</button>
-                </div>
-                <div class="inbox-filter-group" id="inboxFilterDate">
-                  <input type="date" id="chatDateFrom" class="if-date" placeholder="From">
-                  <span class="if-date-sep">–</span>
-                  <input type="date" id="chatDateTo" class="if-date" placeholder="To">
-                </div>
-              </div>
-              <div class="inbox-filter-count" id="chatFilterCount"></div>
               <div class="inbox-thread-items" id="chatThreadItems">
-                <div class="inbox-empty" id="chatThreadEmpty">No customer chats yet. New messages from WhatsApp, Messenger or Instagram will appear here automatically.</div>
+                <div class="inbox-empty" id="chatThreadEmpty">No customer chats yet. Messages from WhatsApp, Messenger or Instagram will appear here.</div>
               </div>
             </div>
+
+            <!-- CENTER: Chat Thread -->
             <div class="inbox-main" id="chatThreadPane">
               <div class="inbox-empty" id="chatThreadNoSelection">
-                <div style="font-size:34px; margin-bottom:8px;">👋</div>
-                Select a customer on the left to open their live chat. You can reply as the owner or correct the AI's message.
+                <div style="font-size:32px; margin-bottom:6px;">💬</div>
+                Select a conversation to start
               </div>
-              <!-- dynamic thread rendered here -->
               <div id="chatThreadContent" style="display:none; height:100%; flex-direction:column;">
                 <div class="inbox-thread-header" id="chatThreadHeader"></div>
                 <div class="inbox-thread-messages" id="chatThreadMessages"></div>
-                <!-- Quick Reply Bar -->
                 <div class="quick-reply-bar" id="quickReplyBar">
                   <div class="qr-scroll" id="quickReplyChips">
-                    <button class="qr-chip" data-qr="greeting">👋 Greeting</button>
-                    <button class="qr-chip" data-qr="pricing">💰 Pricing Info</button>
+                    <button class="qr-chip" data-qr="greeting">👋 Hi</button>
+                    <button class="qr-chip" data-qr="pricing">💰 Price</button>
                     <button class="qr-chip" data-qr="delivery">🚀 Delivery</button>
-                    <button class="qr-chip" data-qr="payment">💳 Payment Details</button>
-                    <button class="qr-chip" data-qr="trial">🧪 Trial Offer</button>
+                    <button class="qr-chip" data-qr="payment">💳 Pay</button>
+                    <button class="qr-chip" data-qr="trial">🧪 Trial</button>
                     <button class="qr-chip" data-qr="escalate">🚨 Escalate</button>
-                    <button class="qr-chip" data-qr="thankyou">🙏 Thank You</button>
-                    <button class="qr-chip" data-qr="followup">📞 Follow Up</button>
+                    <button class="qr-chip" data-qr="thankyou">🙏 Thanks</button>
+                    <button class="qr-chip" data-qr="followup">📞 Follow up</button>
                   </div>
                 </div>
                 <div class="inbox-thread-input" id="chatThreadInputWrap"></div>
               </div>
             </div>
-            <!-- Customer Info Panel -->
-            <aside class="inbox-info-pane" id="chatInfoPane">
-              <div class="info-pane-empty" id="infoPaneEmpty">
-                <div style="font-size:28px; margin-bottom:6px;">👤</div>
-                Select a chat to view customer details
+
+            <!-- RIGHT: Toggle Panel (Info / Coach) -->
+            <aside class="inbox-right-pane" id="chatRightPane">
+              <div class="right-pane-tabs">
+                <button class="rpt-tab active" data-rpt="info">👤 Info</button>
+                <button class="rpt-tab" data-rpt="coach">💡 Coach</button>
               </div>
-              <div id="infoPaneContent" style="display:none;">
-                <div class="info-pane-header" id="infoPaneHeader"></div>
-                <div class="info-pane-section">
-                  <h4>📋 Order History</h4>
-                  <div id="infoOrderHistory" class="info-pane-list">No orders yet</div>
-                </div>
-                <div class="info-pane-section">
-                  <h4>🚨 Past Escalations</h4>
-                  <div id="infoEscalations" class="info-pane-list">None</div>
-                </div>
-                <div class="info-pane-section">
-                  <h4>📝 Notes</h4>
-                  <textarea id="infoNotes" class="info-notes-input" placeholder="Add a note about this customer..."></textarea>
-                  <button class="btn btn-ghost btn-sm" id="saveNoteBtn" style="margin-top:6px;">Save Note</button>
+              <div class="rpt-content" id="rptInfo">
+                <div class="info-pane-empty" id="infoPaneEmpty">Select a chat to view details</div>
+                <div id="infoPaneContent" style="display:none;">
+                  <div class="info-pane-header" id="infoPaneHeader"></div>
+                  <div class="info-pane-section">
+                    <h4>📊 Conversation</h4>
+                    <div id="infoOrderHistory" class="info-pane-list"></div>
+                  </div>
+                  <div class="info-pane-section">
+                    <h4>🚨 Escalations</h4>
+                    <div id="infoEscalations" class="info-pane-list">None</div>
+                  </div>
+                  <div class="info-pane-section">
+                    <h4>📝 Notes</h4>
+                    <textarea id="infoNotes" class="info-notes-input" placeholder="Add a note..."></textarea>
+                    <button class="btn btn-ghost btn-xs" id="saveNoteBtn" style="margin-top:4px;">Save</button>
+                  </div>
                 </div>
               </div>
-            </aside>
-            <aside class="inbox-coach-pane" id="chatCoachPane">
-              <div class="icp-head">
-                <span class="icp-title">💡 AI Profit Coach</span>
-                <button type="button" class="btn btn-ghost btn-sm" id="reanalyzeBtn" title="Re-analyze the full chat now">⟳ Suggest Next</button>
-              </div>
-              <div id="inboxCoachPanel" class="inbox-coach">
-                <div class="inbox-empty">Select a customer to see AI suggestions for your next reply.</div>
+              <div class="rpt-content" id="rptCoach" style="display:none;">
+                <div class="icp-head">
+                  <span class="icp-title">💡 AI Coach</span>
+                  <button type="button" class="btn btn-ghost btn-xs" id="reanalyzeBtn" title="Re-analyze">⟳</button>
+                </div>
+                <div id="inboxCoachPanel" class="inbox-coach">
+                  <div class="inbox-empty">Select a chat for AI suggestions</div>
+                </div>
               </div>
             </aside>
           </div>

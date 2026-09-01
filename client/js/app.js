@@ -1662,19 +1662,9 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
 
     // Search
     const searchInput = document.getElementById('chatSearchInput');
-    const searchClear = document.getElementById('chatSearchClear');
     if (searchInput) {
       searchInput.addEventListener('input', () => {
         inboxSearchQuery = searchInput.value.trim();
-        if (searchClear) searchClear.style.display = inboxSearchQuery ? 'block' : 'none';
-        renderChatThreadList(allChats);
-      });
-    }
-    if (searchClear) {
-      searchClear.addEventListener('click', () => {
-        inboxSearchQuery = '';
-        searchInput.value = '';
-        searchClear.style.display = 'none';
         renderChatThreadList(allChats);
       });
     }
@@ -1690,6 +1680,32 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
       inboxDateTo = dateTo.value ? new Date(dateTo.value) : null;
       renderChatThreadList(allChats);
     });
+
+    // Right pane tabs (Info / Coach)
+    document.querySelectorAll('.rpt-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.rpt-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.getAttribute('data-rpt');
+        const rptInfo = document.getElementById('rptInfo');
+        const rptCoach = document.getElementById('rptCoach');
+        if (rptInfo) rptInfo.style.display = target === 'info' ? 'block' : 'none';
+        if (rptCoach) rptCoach.style.display = target === 'coach' ? 'block' : 'none';
+      });
+    });
+
+    // Sync button toggle help
+    const syncBtn = document.getElementById('metaSyncBtn');
+    const syncHelp = document.getElementById('metaSyncHelp');
+    const syncHelpClose = document.getElementById('metaSyncHelpClose');
+    if (syncBtn && syncHelp) {
+      syncBtn.addEventListener('click', () => {
+        syncHelp.style.display = syncHelp.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+    if (syncHelpClose && syncHelp) {
+      syncHelpClose.addEventListener('click', () => { syncHelp.style.display = 'none'; });
+    }
   }
 
   function formatElapsed(iso) {
