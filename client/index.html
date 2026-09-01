@@ -46,11 +46,7 @@
 
     <!-- NAVIGATION TABS (Desktop Top Bar / Mobile Fixed Bottom App Bar) -->
     <nav class="nav-tabs" id="mainNavTabs">
-      <button class="nav-tab active" data-tab="simulator">
-        <span class="tab-icon">💬</span>
-        <span class="tab-label">Simulator</span>
-      </button>
-      <button class="nav-tab" data-tab="chats">
+      <button class="nav-tab active" data-tab="chats">
         <span class="tab-icon">📥</span>
         <span class="tab-label">Chats <span class="tab-badge" id="chatInboxBadge">0</span></span>
       </button>
@@ -78,6 +74,10 @@
         <span class="tab-icon">🔴</span>
         <span class="tab-label">Live Feed <span class="tab-badge" id="liveFeedCountBadge">0</span></span>
       </button>
+      <button class="nav-tab" data-tab="simulator">
+        <span class="tab-icon">💬</span>
+        <span class="tab-label">Simulator</span>
+      </button>
       <button class="nav-tab" data-tab="meta-setup">
         <span class="tab-icon">⚙️</span>
         <span class="tab-label">Meta Setup</span>
@@ -87,116 +87,8 @@
     <!-- MAIN CONTENT AREA -->
     <main class="main-content">
       
-      <!-- TAB 1: OMNICHANNEL SIMULATOR -->
-      <section id="tab-simulator" class="tab-pane active">
-        <div class="chat-layout">
-          <!-- LEFT: SCENARIOS & CHANNEL SWITCHER -->
-          <div class="chat-sidebar">
-            <div class="panel-card">
-              <h3>📱 Select Channel</h3>
-              <div class="channel-selector">
-                <button class="channel-btn active" data-channel="WhatsApp">
-                  <span>📱</span> WhatsApp
-                </button>
-                <button class="channel-btn" data-channel="Messenger">
-                  <span>💬</span> Messenger
-                </button>
-                <button class="channel-btn" data-channel="Instagram">
-                  <span>📸</span> Instagram
-                </button>
-              </div>
-            </div>
-
-            <div class="panel-card">
-              <h3>⚡ Quick Test Scenarios (Roman Urdu/Eng)</h3>
-              <p class="panel-desc">Click any scenario to simulate customer incoming query:</p>
-              <div class="scenario-list">
-                <button class="scenario-btn" data-text="Salam, sabse sasta rdp konsa hai?">
-                  <span>🏷️</span> "Sabse sasta rdp konsa hai?"
-                </button>
-                <button class="scenario-btn" data-text="Starter plan US-Central ka price kya hai?">
-                  <span>🇺🇸</span> "Starter US-Central price kya hai?"
-                </button>
-                <button class="scenario-btn" data-text="Bhai thora discount mil sakta hai kya?">
-                  <span>💸</span> "Discount mil sakta hai?" (Escalation)
-                </button>
-                <button class="scenario-btn" data-text="Maine JazzCash pe paise send kar diye hain yeh receipt check karein" data-image="true">
-                  <span>🧾</span> "Payment bhej di hai" (Proof Escalate)
-                </button>
-                <button class="scenario-btn" data-text="Kya 1 day ka free trial mil sakta hai?">
-                  <span>🧪</span> "1 day free trial milega?"
-                </button>
-                <button class="scenario-btn" data-text="Shared rdp aur isme kya farq hai?">
-                  <span>⚖️</span> "Shared vs Dedicated RDP?"
-                </button>
-                <button class="scenario-btn" data-text="Kya main ispe Netflix aur banking chala sakta hoon?">
-                  <span>🎬</span> "Netflix / Banking use kar sakta hoon?"
-                </button>
-                <button class="scenario-btn" data-text="Mera RDP offline ho gaya hai connectivity nahi aa rahi">
-                  <span>🚨</span> "RDP Down / Offline issue"
-                </button>
-                <button class="scenario-btn" data-text="Payment accounts share karein JazzCash / Bank">
-                  <span>💳</span> "Payment Accounts Details"
-                </button>
-              </div>
-            </div>
-
-            <div class="panel-card">
-              <button class="btn btn-outline" id="clearChatBtn" style="width: 100%;">
-                🗑️ Clear Conversation
-              </button>
-            </div>
-          </div>
-
-          <!-- RIGHT: CHAT WINDOW -->
-          <div class="chat-window">
-            <div class="chat-header">
-              <div class="chat-header-user">
-                <div class="avatar" id="chatAvatar">💬</div>
-                <div>
-                  <h4 id="chatChannelTitle">WhatsApp Customer Simulator</h4>
-                  <span class="status-text">🟢 Online — CSS AI Agent Active</span>
-                </div>
-              </div>
-              <div class="chat-header-actions">
-                <span class="badge badge-whatsapp" id="currentChannelBadge">WhatsApp</span>
-              </div>
-            </div>
-
-            <!-- CHAT MESSAGES BODY -->
-            <div class="chat-messages" id="chatMessages">
-              <!-- Initial Welcome Message -->
-              <div class="message-bubble agent-bubble">
-                <div class="bubble-meta">
-                  <span class="sender-name">PakCloudRDP CSS Agent</span>
-                  <span class="timestamp">Just now</span>
-                </div>
-                <div class="bubble-content">
-                  Wa Alaikum Assalam! 🚀 Welcome to <strong>PakCloudRDP</strong>.<br>
-                  Har customer ko milta hai: <strong>100% Dedicated Machine + Dedicated Private IP + 1 Gbps Uplink</strong>.<br><br>
-                  Aap mujh se plans, regional prices (EU, UK, US, India, SG etc.), payment methods ya delivery k bare mein pooch sakte hain!
-                </div>
-              </div>
-            </div>
-
-            <!-- SUGGESTED ACTION CHIPS -->
-            <div class="action-chips" id="actionChips">
-              <!-- Dynamically populated -->
-            </div>
-
-            <!-- INPUT BOX -->
-            <div class="chat-input-container">
-              <input type="text" id="chatInput" placeholder="Type customer message in Roman Urdu or English..." autocomplete="off" />
-              <button class="btn btn-primary" id="sendMessageBtn">
-                <span>Send</span> ✈️
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- TAB: PER-USER CHAT INBOX -->
-      <section id="tab-chats" class="tab-pane">
+      <section id="tab-chats" class="tab-pane active">
         <div class="panel-card" style="padding:0; overflow:hidden;">
           <div style="padding:14px 18px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <h2 style="margin:0; font-size:18px;">📥 Customer Chats</h2>
@@ -1930,6 +1822,114 @@ Aap apni requirement ke mutabiq region select kar sakte hain! 🌍</p>
 
             <div id="liveFeedMessages" style="max-height:560px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px;">
               <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: OMNICHANNEL SIMULATOR -->
+      <section id="tab-simulator" class="tab-pane">
+        <div class="chat-layout">
+          <!-- LEFT: SCENARIOS & CHANNEL SWITCHER -->
+          <div class="chat-sidebar">
+            <div class="panel-card">
+              <h3>📱 Select Channel</h3>
+              <div class="channel-selector">
+                <button class="channel-btn active" data-channel="WhatsApp">
+                  <span>📱</span> WhatsApp
+                </button>
+                <button class="channel-btn" data-channel="Messenger">
+                  <span>💬</span> Messenger
+                </button>
+                <button class="channel-btn" data-channel="Instagram">
+                  <span>📸</span> Instagram
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <h3>⚡ Quick Test Scenarios (Roman Urdu/Eng)</h3>
+              <p class="panel-desc">Click any scenario to simulate customer incoming query:</p>
+              <div class="scenario-list">
+                <button class="scenario-btn" data-text="Salam, sabse sasta rdp konsa hai?">
+                  <span>🏷️</span> "Sabse sasta rdp konsa hai?"
+                </button>
+                <button class="scenario-btn" data-text="Starter plan US-Central ka price kya hai?">
+                  <span>🇺🇸</span> "Starter US-Central price kya hai?"
+                </button>
+                <button class="scenario-btn" data-text="Bhai thora discount mil sakta hai kya?">
+                  <span>💸</span> "Discount mil sakta hai?" (Escalation)
+                </button>
+                <button class="scenario-btn" data-text="Maine JazzCash pe paise send kar diye hain yeh receipt check karein" data-image="true">
+                  <span>🧾</span> "Payment bhej di hai" (Proof Escalate)
+                </button>
+                <button class="scenario-btn" data-text="Kya 1 day ka free trial mil sakta hai?">
+                  <span>🧪</span> "1 day free trial milega?"
+                </button>
+                <button class="scenario-btn" data-text="Shared rdp aur isme kya farq hai?">
+                  <span>⚖️</span> "Shared vs Dedicated RDP?"
+                </button>
+                <button class="scenario-btn" data-text="Kya main ispe Netflix aur banking chala sakta hoon?">
+                  <span>🎬</span> "Netflix / Banking use kar sakta hoon?"
+                </button>
+                <button class="scenario-btn" data-text="Mera RDP offline ho gaya hai connectivity nahi aa rahi">
+                  <span>🚨</span> "RDP Down / Offline issue"
+                </button>
+                <button class="scenario-btn" data-text="Payment accounts share karein JazzCash / Bank">
+                  <span>💳</span> "Payment Accounts Details"
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <button class="btn btn-outline" id="clearChatBtn" style="width: 100%;">
+                🗑️ Clear Conversation
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: CHAT WINDOW -->
+          <div class="chat-window">
+            <div class="chat-header">
+              <div class="chat-header-user">
+                <div class="avatar" id="chatAvatar">💬</div>
+                <div>
+                  <h4 id="chatChannelTitle">WhatsApp Customer Simulator</h4>
+                  <span class="status-text">🟢 Online — CSS AI Agent Active</span>
+                </div>
+              </div>
+              <div class="chat-header-actions">
+                <span class="badge badge-whatsapp" id="currentChannelBadge">WhatsApp</span>
+              </div>
+            </div>
+
+            <!-- CHAT MESSAGES BODY -->
+            <div class="chat-messages" id="chatMessages">
+              <!-- Initial Welcome Message -->
+              <div class="message-bubble agent-bubble">
+                <div class="bubble-meta">
+                  <span class="sender-name">PakCloudRDP CSS Agent</span>
+                  <span class="timestamp">Just now</span>
+                </div>
+                <div class="bubble-content">
+                  Wa Alaikum Assalam! 🚀 Welcome to <strong>PakCloudRDP</strong>.<br>
+                  Har customer ko milta hai: <strong>100% Dedicated Machine + Dedicated Private IP + 1 Gbps Uplink</strong>.<br><br>
+                  Aap mujh se plans, regional prices (EU, UK, US, India, SG etc.), payment methods ya delivery k bare mein pooch sakte hain!
+                </div>
+              </div>
+            </div>
+
+            <!-- SUGGESTED ACTION CHIPS -->
+            <div class="action-chips" id="actionChips">
+              <!-- Dynamically populated -->
+            </div>
+
+            <!-- INPUT BOX -->
+            <div class="chat-input-container">
+              <input type="text" id="chatInput" placeholder="Type customer message in Roman Urdu or English..." autocomplete="off" />
+              <button class="btn btn-primary" id="sendMessageBtn">
+                <span>Send</span> ✈️
+              </button>
             </div>
           </div>
         </div>
