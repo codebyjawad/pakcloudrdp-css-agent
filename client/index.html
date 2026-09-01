@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PakCloudRDP — Customer Support Service (CSS) Agent & Meta Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- TOP HEADER -->
+    <header class="header">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <span class="logo-icon">🚀</span>
+          <div>
+            <h1 class="brand-title">PAKCLOUDRDP</h1>
+            <p class="brand-subtitle">CSS Agent & Meta Omnichannel Hub (WhatsApp • Messenger • Instagram)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-meta-status">
+        <div class="status-pill whatsapp-pill">
+          <span class="dot"></span>
+          <span>WhatsApp Cloud API</span>
+        </div>
+        <div class="status-pill messenger-pill">
+          <span class="dot"></span>
+          <span>FB Messenger</span>
+        </div>
+        <div class="status-pill insta-pill">
+          <span class="dot"></span>
+          <span>Instagram DM</span>
+        </div>
+        <div class="support-clock" id="supportClock">
+          <span class="clock-icon">🕘</span>
+          <span id="pktTime">--:-- PKT</span>
+          <span class="badge" id="supportStatusBadge">Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NAVIGATION TABS (Desktop Top Bar / Mobile Fixed Bottom App Bar) -->
+    <nav class="nav-tabs" id="mainNavTabs">
+      <button class="nav-tab active" data-tab="simulator">
+        <span class="tab-icon">💬</span>
+        <span class="tab-label">Simulator</span>
+      </button>
+      <button class="nav-tab" data-tab="chats">
+        <span class="tab-icon">📥</span>
+        <span class="tab-label">Chats <span class="tab-badge" id="chatInboxBadge">0</span></span>
+      </button>
+      <button class="nav-tab" data-tab="playbook">
+        <span class="tab-icon">🎯</span>
+        <span class="tab-label">CS Flow</span>
+      </button>
+      <button class="nav-tab" data-tab="copilot">
+        <span class="tab-icon">⚡</span>
+        <span class="tab-label">Copilot</span>
+      </button>
+      <button class="nav-tab" data-tab="pricing">
+        <span class="tab-icon">💰</span>
+        <span class="tab-label">Price Matrix</span>
+      </button>
+      <button class="nav-tab" data-tab="orders">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">Orders <span class="tab-badge" id="orderCountBadge">0</span></span>
+      </button>
+      <button class="nav-tab" data-tab="escalations">
+        <span class="tab-icon">🚨</span>
+        <span class="tab-label">Escalate <span class="tab-badge badge-urgent-sm" id="escalationCountBadge">0</span></span>
+      </button>
+      <button class="nav-tab" data-tab="live-feed">
+        <span class="tab-icon">🔴</span>
+        <span class="tab-label">Live Feed <span class="tab-badge" id="liveFeedCountBadge">0</span></span>
+      </button>
+      <button class="nav-tab" data-tab="meta-setup">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Meta Setup</span>
+      </button>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      
+      <!-- TAB 1: OMNICHANNEL SIMULATOR -->
+      <section id="tab-simulator" class="tab-pane active">
+        <div class="chat-layout">
+          <!-- LEFT: SCENARIOS & CHANNEL SWITCHER -->
+          <div class="chat-sidebar">
+            <div class="panel-card">
+              <h3>📱 Select Channel</h3>
+              <div class="channel-selector">
+                <button class="channel-btn active" data-channel="WhatsApp">
+                  <span>📱</span> WhatsApp
+                </button>
+                <button class="channel-btn" data-channel="Messenger">
+                  <span>💬</span> Messenger
+                </button>
+                <button class="channel-btn" data-channel="Instagram">
+                  <span>📸</span> Instagram
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <h3>⚡ Quick Test Scenarios (Roman Urdu/Eng)</h3>
+              <p class="panel-desc">Click any scenario to simulate customer incoming query:</p>
+              <div class="scenario-list">
+                <button class="scenario-btn" data-text="Salam, sabse sasta rdp konsa hai?">
+                  <span>🏷️</span> "Sabse sasta rdp konsa hai?"
+                </button>
+                <button class="scenario-btn" data-text="Starter plan US-Central ka price kya hai?">
+                  <span>🇺🇸</span> "Starter US-Central price kya hai?"
+                </button>
+                <button class="scenario-btn" data-text="Bhai thora discount mil sakta hai kya?">
+                  <span>💸</span> "Discount mil sakta hai?" (Escalation)
+                </button>
+                <button class="scenario-btn" data-text="Maine JazzCash pe paise send kar diye hain yeh receipt check karein" data-image="true">
+                  <span>🧾</span> "Payment bhej di hai" (Proof Escalate)
+                </button>
+                <button class="scenario-btn" data-text="Kya 1 day ka free trial mil sakta hai?">
+                  <span>🧪</span> "1 day free trial milega?"
+                </button>
+                <button class="scenario-btn" data-text="Shared rdp aur isme kya farq hai?">
+                  <span>⚖️</span> "Shared vs Dedicated RDP?"
+                </button>
+                <button class="scenario-btn" data-text="Kya main ispe Netflix aur banking chala sakta hoon?">
+                  <span>🎬</span> "Netflix / Banking use kar sakta hoon?"
+                </button>
+                <button class="scenario-btn" data-text="Mera RDP offline ho gaya hai connectivity nahi aa rahi">
+                  <span>🚨</span> "RDP Down / Offline issue"
+                </button>
+                <button class="scenario-btn" data-text="Payment accounts share karein JazzCash / Bank">
+                  <span>💳</span> "Payment Accounts Details"
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <button class="btn btn-outline" id="clearChatBtn" style="width: 100%;">
+                🗑️ Clear Conversation
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: CHAT WINDOW -->
+          <div class="chat-window">
+            <div class="chat-header">
+              <div class="chat-header-user">
+                <div class="avatar" id="chatAvatar">💬</div>
+                <div>
+                  <h4 id="chatChannelTitle">WhatsApp Customer Simulator</h4>
+                  <span class="status-text">🟢 Online — CSS AI Agent Active</span>
+                </div>
+              </div>
+              <div class="chat-header-actions">
+                <span class="badge badge-whatsapp" id="currentChannelBadge">WhatsApp</span>
+              </div>
+            </div>
+
+            <!-- CHAT MESSAGES BODY -->
+            <div class="chat-messages" id="chatMessages">
+              <!-- Initial Welcome Message -->
+              <div class="message-bubble agent-bubble">
+                <div class="bubble-meta">
+                  <span class="sender-name">PakCloudRDP CSS Agent</span>
+                  <span class="timestamp">Just now</span>
+                </div>
+                <div class="bubble-content">
+                  Wa Alaikum Assalam! 🚀 Welcome to <strong>PakCloudRDP</strong>.<br>
+                  Har customer ko milta hai: <strong>100% Dedicated Machine + Dedicated Private IP + 1 Gbps Uplink</strong>.<br><br>
+                  Aap mujh se plans, regional prices (EU, UK, US, India, SG etc.), payment methods ya delivery k bare mein pooch sakte hain!
+                </div>
+              </div>
+            </div>
+
+            <!-- SUGGESTED ACTION CHIPS -->
+            <div class="action-chips" id="actionChips">
+              <!-- Dynamically populated -->
+            </div>
+
+            <!-- INPUT BOX -->
+            <div class="chat-input-container">
+              <input type="text" id="chatInput" placeholder="Type customer message in Roman Urdu or English..." autocomplete="off" />
+              <button class="btn btn-primary" id="sendMessageBtn">
+                <span>Send</span> ✈️
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: PER-USER CHAT INBOX -->
+      <section id="tab-chats" class="tab-pane">
+        <div class="panel-card" style="padding:0; overflow:hidden;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <h2 style="margin:0; font-size:18px;">📥 Customer Chats</h2>
+            <span class="muted-sm" id="chatInboxHint">AI answers first · you can reply or correct</span>
+            <button class="btn btn-ghost btn-sm ms-auto" id="chatRefreshBtn">↻ Refresh</button>
+          </div>
+
+          <div id="metaSyncPanel" style="padding:10px 16px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:rgba(245,158,11,0.06);">
+            <span style="font-size:22px;">🔁</span>
+            <div style="flex:1; min-width:220px;">
+              <div style="font-size:13.5px; font-weight:600; color:#eef1f7;" id="metaSyncTitle">Meta Sync</div>
+              <div style="font-size:12.5px; color:#8a93a8;" id="metaSyncStatus">Checking…</div>
+            </div>
+            <button type="button" class="btn btn-sm" id="metaSyncBtn" style="background:linear-gradient(135deg,#25D366,#128C7E); color:#04140b; font-weight:700;">Sync from Meta</button>
+          </div>
+          <div id="metaSyncHelp" style="display:none; padding:12px 16px; border-bottom:1px solid var(--border,#262b3d); background:rgba(245,158,11,0.05);">
+            <div style="font-size:13px; color:#f0e6d2; margin-bottom:8px;">To sync conversations from Meta, the app needs one permission. Do this once (5 min):</div>
+            <ol style="margin:0 0 10px; padding-left:20px; font-size:12.5px; color:#c8cfdd; line-height:1.7;">
+              <li>Open <strong>developers.facebook.com/apps</strong> → your app (pakcloudrdpapp).</li>
+              <li>Left menu → <strong>App Settings → Advanced</strong> → copy your <strong>App Secret</strong>.</li>
+              <li>In the server file <code>/var/www/codebyjawad.com/agent/.env</code>, set <code>META_APP_SECRET=...your secret</code> then run <code>pm2 restart agent</code>.</li>
+              <li>Left menu → find <strong>WhatsApp → API Setup</strong>. The app must have the <strong>WhatsApp Business Management API</strong> product enabled.</li>
+              <li>In <strong>App Review → Permissions and Features</strong>, submit/approve the <strong>whatsapp_business_management</strong> permission (request Advanced Access).</li>
+              <li>Regenerate the system-user access token in <strong>Business Settings → System Users</strong> after granting, then update <code>WHATSAPP_ACCESS_TOKEN</code> in <code>.env</code> and <code>pm2 restart agent</code>.</li>
+            </ol>
+            <button type="button" class="btn btn-ghost btn-sm" id="metaSyncHelpClose">Got it</button>
+          </div>
+
+          <div class="inbox" id="chatInbox">
+            <div class="inbox-list" id="chatThreadList">
+              <div class="inbox-filters">
+                <div class="inbox-filter-group" id="inboxFilterChannel">
+                  <button type="button" class="if-btn active" data-ich="all">All</button>
+                  <button type="button" class="if-btn" data-ich="WhatsApp">📱 WA</button>
+                  <button type="button" class="if-btn" data-ich="Messenger">💬 MSG</button>
+                  <button type="button" class="if-btn" data-ich="Instagram">📸 IG</button>
+                </div>
+                <div class="inbox-filter-group" id="inboxFilterStatus">
+                  <button type="button" class="if-btn active" data-ist="all">All</button>
+                  <button type="button" class="if-btn" data-ist="needs">⏳ Needs attention</button>
+                  <button type="button" class="if-btn" data-ist="ai">🤖 AI handled</button>
+                </div>
+              </div>
+              <div class="inbox-filter-count" id="chatFilterCount"></div>
+              <div class="inbox-thread-items" id="chatThreadItems">
+                <div class="inbox-empty" id="chatThreadEmpty">No customer chats yet. New messages from WhatsApp, Messenger or Instagram will appear here automatically.</div>
+              </div>
+            </div>
+            <div class="inbox-main" id="chatThreadPane">
+              <div class="inbox-empty" id="chatThreadNoSelection">
+                <div style="font-size:34px; margin-bottom:8px;">👋</div>
+                Select a customer on the left to open their live chat. You can reply as the owner or correct the AI's message.
+              </div>
+              <!-- dynamic thread rendered here -->
+              <div id="chatThreadContent" style="display:none; height:100%; flex-direction:column;">
+                <div class="inbox-thread-header" id="chatThreadHeader"></div>
+                <div class="inbox-thread-messages" id="chatThreadMessages"></div>
+                <div class="inbox-thread-input" id="chatThreadInputWrap"></div>
+              </div>
+            </div>
+            <aside class="inbox-coach-pane" id="chatCoachPane">
+              <div class="icp-head">
+                <span class="icp-title">💡 AI Profit Coach</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="reanalyzeBtn" title="Re-analyze the full chat now">⟳ Suggest Next</button>
+              </div>
+              <div id="inboxCoachPanel" class="inbox-coach">
+                <div class="inbox-empty">Select a customer to see AI suggestions for your next reply.</div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: MANUAL CS SALES COCKPIT & CONVERSION ENGINE -->
+      <section id="tab-playbook" class="tab-pane">
+        <div class="cockpit-container">
+          <!-- TOP HERO BAR -->
+          <div class="panel-card cockpit-header-card">
+            <div class="cockpit-header-left">
+              <div class="cockpit-icon-wrap">🎯</div>
+              <div>
+                <h2>Manual CS Sales Cockpit & Conversion Playbook</h2>
+                <p class="panel-desc">Stage-by-stage customer conversion pipeline with ready-to-send WhatsApp scripts & objection battlecards:</p>
+              </div>
+            </div>
+            <div class="cockpit-metrics">
+              <div class="cockpit-metric-pill">
+                <span class="metric-lbl">Target Close Rate</span>
+                <strong class="metric-val text-success">85%+</strong>
+              </div>
+              <div class="cockpit-metric-pill">
+                <span class="metric-lbl">Setup SLA</span>
+                <strong class="metric-val text-cyan">&lt; 30 Mins</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- SPLIT COCKPIT GRID -->
+          <div class="cockpit-split-grid">
+            <!-- LEFT COLUMN: STAGE ROADMAP NAVIGATOR -->
+            <div class="cockpit-sidebar">
+              <div class="panel-card roadmap-card">
+                <div class="roadmap-header">
+                  <h3>🧭 Sales Pipeline Stages</h3>
+                  <span class="roadmap-subtitle">Select stage to open command card</span>
+                </div>
+
+                <div class="roadmap-stage-list">
+                  <!-- Stage 1 Item -->
+                  <div class="stage-nav-item active" data-stage="1">
+                    <div class="stage-nav-indicator">
+                      <span class="stage-num">01</span>
+                    </div>
+                    <div class="stage-nav-info">
+                      <div class="stage-nav-top">
+                        <strong class="stage-title">Discovery & Qualify</strong>
+                        <span class="stage-tag tag-blue">Greet</span>
+                      </div>
+                      <span class="stage-desc">Find customer use-case & apps</span>
+                    </div>
+                    <span class="stage-nav-arrow">➔</span>
+                  </div>
+
+                  <!-- Stage 2 Item -->
+                  <div class="stage-nav-item" data-stage="2">
+                    <div class="stage-nav-indicator">
+                      <span class="stage-num">02</span>
+                    </div>
+                    <div class="stage-nav-info">
+                      <div class="stage-nav-top">
+                        <strong class="stage-title">Pitch & Price Quote</strong>
+                        <span class="stage-tag tag-purple">Value</span>
+                      </div>
+                      <span class="stage-desc">Specs, Dedicated IP & PKR Rate</span>
+                    </div>
+                    <span class="stage-nav-arrow">➔</span>
+                  </div>
+
+                  <!-- Stage 3 Item -->
+                  <div class="stage-nav-item" data-stage="3">
+                    <div class="stage-nav-indicator">
+                      <span class="stage-num">03</span>
+                    </div>
+                    <div class="stage-nav-info">
+                      <div class="stage-nav-top">
+                        <strong class="stage-title">Payment Collection</strong>
+                        <span class="stage-tag tag-green">Close</span>
+                      </div>
+                      <span class="stage-desc">JazzCash, Raast, NayaPay, UBL</span>
+                    </div>
+                    <span class="stage-nav-arrow">➔</span>
+                  </div>
+
+                  <!-- Stage 4 Item -->
+                  <div class="stage-nav-item" data-stage="4">
+                    <div class="stage-nav-indicator">
+                      <span class="stage-num">04</span>
+                    </div>
+                    <div class="stage-nav-info">
+                      <div class="stage-nav-top">
+                        <strong class="stage-title">Verification & SLA</strong>
+                        <span class="stage-tag tag-amber">Verify</span>
+                      </div>
+                      <span class="stage-desc">Acknowledge proof & 30-min setup</span>
+                    </div>
+                    <span class="stage-nav-arrow">➔</span>
+                  </div>
+
+                  <!-- Stage 5 Item -->
+                  <div class="stage-nav-item" data-stage="5">
+                    <div class="stage-nav-indicator">
+                      <span class="stage-num">05</span>
+                    </div>
+                    <div class="stage-nav-info">
+                      <div class="stage-nav-top">
+                        <strong class="stage-title">Convert & Deliver</strong>
+                        <span class="stage-tag tag-cyan">Deliver</span>
+                      </div>
+                      <span class="stage-desc">Log CRM order & send credentials</span>
+                    </div>
+                    <span class="stage-nav-arrow">➔</span>
+                  </div>
+                </div>
+
+                <!-- Golden Rule Callout -->
+                <div class="cockpit-rule-box">
+                  <div class="rule-icon">🛡️</div>
+                  <div>
+                    <strong>Team Golden Rule #6:</strong>
+                    <p>Only Owner verifies payment before machine deployment. Never confirm payment prematurely.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: DYNAMIC STAGE COMMAND CENTER & BATTLECARDS -->
+            <div class="cockpit-main-pane">
+              <!-- STAGE 1 VIEW -->
+              <div class="cockpit-stage-view active" id="cockpitStage1">
+                <div class="panel-card stage-command-card">
+                  <div class="command-card-header">
+                    <div class="header-left">
+                      <span class="stage-badge-lg badge-blue">Stage 01 · Greet & Discover</span>
+                      <h2>Lead Qualification & Use-Case Discovery</h2>
+                    </div>
+                    <div class="header-right">
+                      <span class="time-estimate">⏱️ Target: &lt; 1 min</span>
+                    </div>
+                  </div>
+
+                  <div class="strategy-guidance">
+                    <div class="guide-icon">💡</div>
+                    <p><strong>Goal:</strong> Don't send generic price cards immediately. Ask what apps or workloads they run so you recommend the exact plan they need, avoid refunds, and build immediate authority.</p>
+                  </div>
+
+                  <!-- WhatsApp Script Card -->
+                  <div class="cockpit-script-box">
+                    <div class="script-box-header">
+                      <span class="script-type-tag">💬 Ready-to-Send WhatsApp Script</span>
+                      <span class="script-lang-tag">Roman Urdu / English</span>
+                    </div>
+                    <p class="cockpit-script-text" id="cockpitScript1">Wa Alaikum Assalam! 🚀 Welcome to PakCloudRDP.
+
+Aapko RDP kis purpose ya tasks ke liye chahiye (e.g. general browsing, multiple accounts, social media marketing, trading bots, video render ya heavy work)?
+
+Aur koi specific country/region location requirement hai? 🌍</p>
+                    <div class="cockpit-script-actions">
+                      <button type="button" class="btn-cockpit-copy" data-target="cockpitScript1">📋 Copy WhatsApp Script</button>
+                      <button type="button" class="btn-cockpit-chat" data-target="cockpitScript1">💬 Insert in Chat Simulator</button>
+                      <button type="button" class="btn-cockpit-next" data-goto="2">Next: Pitch Plan ➔</button>
+                    </div>
+                  </div>
+
+                  <!-- Quick Use-Case Matcher & Tailored Pitch Cards -->
+                  <div class="battlecards-section">
+                    <div class="battlecards-header-row">
+                      <h3>⚡ Quick Use-Case Matcher (1-Click Match & Send Tailored Pitch)</h3>
+                      <span class="battlecards-hint">Click any card to load or copy customized pitch:</span>
+                    </div>
+                    <div class="match-grid">
+                      <!-- 1. Little Match Card -->
+                      <div class="match-card" data-plan="little" data-region="eu" data-quote="Aapke light browsing aur single task k liye hamara *Little EU* plan sabse best aur budget-friendly rahega! 💰
+
+💻 *Specs*: 1 vCPU · 3 GB RAM · 30 GB NVMe
+🌐 *100% Dedicated Private IP* · 1 Gbps Uplink
+👑 Full Windows Administrator Desktop
+
+💰 *Price: ₨1,500/month (Fixed PKR)*
+⏱️ *Delivery*: ~30 mins after payment verification
+
+Kya main payment details share karoon? 🤝">
+                        <div class="match-card-top">
+                          <span class="match-trigger">Light browsing / 1 tab / Single app</span>
+                          <span class="match-pill">Budget</span>
+                        </div>
+                        <strong class="match-recommend">👉 Little EU (₨1,500/mo)</strong>
+                        <span class="match-detail">1 vCPU · 3 GB RAM · 30 GB NVMe</span>
+                        <div class="match-card-actions">
+                          <button type="button" class="btn-match-copy">📋 Copy Pitch</button>
+                          <button type="button" class="btn-match-send">💬 Send to Chat</button>
+                        </div>
+                      </div>
+
+                      <!-- 2. Starter Match Card -->
+                      <div class="match-card featured" data-plan="starter" data-region="eu" data-quote="Aapke multi-tabs aur general work k liye hamara *Starter EU* plan best rahega! 🚀
+
+💻 *Specs*: 4 vCPU · 8 GB RAM · 75 GB NVMe High Speed
+🌐 *100% Dedicated Private IP* (No sharing, 100% privacy)
+⚡ *Speed*: 1 Gbps Uplink · Unmetered Bandwidth
+👑 Full Windows Administrator Desktop
+
+💰 *Price: ₨2,800/month (Fixed PKR)*
+⏱️ *Delivery*: ~30 mins after payment verification
+
+Kya main aapke sath payment details share karoon? 🤝">
+                        <div class="match-card-top">
+                          <span class="match-trigger">Multi-tabs / General work / Office</span>
+                          <span class="match-pill pill-best">Top Seller ⭐</span>
+                        </div>
+                        <strong class="match-recommend">👉 Starter EU (₨2,800/mo) ⭐</strong>
+                        <span class="match-detail">4 vCPU · 8 GB RAM · 75 GB NVMe</span>
+                        <div class="match-card-actions">
+                          <button type="button" class="btn-match-copy">📋 Copy Pitch</button>
+                          <button type="button" class="btn-match-send">💬 Send to Chat</button>
+                        </div>
+                      </div>
+
+                      <!-- 3. Standard Match Card -->
+                      <div class="match-card" data-plan="standard" data-region="eu" data-quote="24/7 Automation aur trading bots k liye hamara *Standard EU* plan best rahega! 🚀
+
+💻 *Specs*: 6 vCPU · 12 GB RAM · 100 GB NVMe
+🌐 *100% Dedicated Clean IP* (Continuous 24/7 uptime)
+⚡ *Speed*: 1 Gbps Uplink · Unmetered Bandwidth
+👑 Full Windows Administrator Access
+
+💰 *Price: ₨3,800/month (Fixed PKR)*
+⏱️ *Delivery*: ~30 mins after payment verification
+
+Kya main aapke sath payment details share karoon? 🤝">
+                        <div class="match-card-top">
+                          <span class="match-trigger">24/7 Bots / Automation / 10+ Profiles</span>
+                          <span class="match-pill">High RAM</span>
+                        </div>
+                        <strong class="match-recommend">👉 Standard EU (₨3,800/mo)</strong>
+                        <span class="match-detail">6 vCPU · 12 GB RAM · 100 GB NVMe</span>
+                        <div class="match-card-actions">
+                          <button type="button" class="btn-match-copy">📋 Copy Pitch</button>
+                          <button type="button" class="btn-match-send">💬 Send to Chat</button>
+                        </div>
+                      </div>
+
+                      <!-- 4. Plus / Heavy Match Card -->
+                      <div class="match-card" data-plan="plus" data-region="eu" data-quote="Heavy workloads aur high RAM processing k liye hamara *Plus EU* plan best rahega! 🚀
+
+💻 *Specs*: 8 vCPU · 24 GB RAM · 200 GB NVMe High Speed
+🌐 *100% Dedicated Private Server* · 1 Gbps Uplink
+👑 Full Windows Administrator Desktop Access
+
+💰 *Price: ₨7,000/month (Fixed PKR)*
+⏱️ *Delivery*: ~30 mins after payment verification
+
+Kya main payment details share karoon? 🤝">
+                        <div class="match-card-top">
+                          <span class="match-trigger">Heavy data / Server loads / High RAM</span>
+                          <span class="match-pill">Enterprise</span>
+                        </div>
+                        <strong class="match-recommend">👉 Plus (₨7,000) or Pro (₨12,500)</strong>
+                        <span class="match-detail">8 to 12 vCPU · 24GB to 48GB RAM</span>
+                        <div class="match-card-actions">
+                          <button type="button" class="btn-match-copy">📋 Copy Pitch</button>
+                          <button type="button" class="btn-match-send">💬 Send to Chat</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- STAGE 2 VIEW -->
+              <div class="cockpit-stage-view" id="cockpitStage2">
+                <div class="panel-card stage-command-card">
+                  <div class="command-card-header">
+                    <div class="header-left">
+                      <span class="stage-badge-lg badge-purple">Stage 02 · Pitch & Value Prop</span>
+                      <h2>Recommend Plan & Present Fixed PKR Quote</h2>
+                    </div>
+                    <div class="header-right">
+                      <span class="time-estimate">⏱️ Target: &lt; 2 mins</span>
+                    </div>
+                  </div>
+
+                  <div class="strategy-guidance">
+                    <div class="guide-icon">💡</div>
+                    <p><strong>Goal:</strong> Highlight our 3 key differentiators: <strong>100% Dedicated Machine + 1 Private Clean IP (never shared) + 1 Gbps port</strong>. State fixed PKR price with zero exchange volatility.</p>
+                  </div>
+
+                  <!-- WhatsApp Script Card -->
+                  <div class="cockpit-script-box">
+                    <div class="script-box-header">
+                      <span class="script-type-tag">💬 Ready-to-Send WhatsApp Offer (Starter Example)</span>
+                      <span class="script-lang-tag">High-Conversion Pitch</span>
+                    </div>
+                    <p class="cockpit-script-text" id="cockpitScript2">Aapke use case ke liye hamara *Starter EU* plan best rahega! 🚀
+
+💻 *Specs*: 4 vCPU · 8 GB RAM · 75 GB NVMe High Speed
+🌐 *100% Dedicated Private IP* (No sharing, complete privacy)
+⚡ *Speed*: 1 Gbps Uplink · Unmetered Bandwidth
+👑 Full Windows Administrator Desktop Access
+
+💰 *Price: ₨2,800/month (Fixed PKR)*
+⏱️ *Delivery*: ~30 mins after payment verification
+
+Kya main aapke sath payment details share karoon? 🤝</p>
+                    <div class="cockpit-script-actions">
+                      <button type="button" class="btn-cockpit-copy" data-target="cockpitScript2">📋 Copy WhatsApp Pitch</button>
+                      <button type="button" class="btn-cockpit-chat" data-target="cockpitScript2">💬 Insert in Chat Simulator</button>
+                      <button type="button" class="btn-cockpit-next" data-goto="3">Next: Send Accounts ➔</button>
+                    </div>
+                  </div>
+
+                  <!-- Objection Battlecards -->
+                  <div class="battlecards-section">
+                    <h3>🛡️ Objection Battlecards (Click to Copy Rebuttal)</h3>
+                    <div class="objection-grid">
+                      <div class="objection-card" data-copy="Hamari prices 100% dedicated hardware aur clean private IP ke mutabiq fixed hain. Agar budget kam hai toh Little EU (₨1,500/mo) available hai!">
+                        <div class="obj-header">
+                          <span class="obj-q">🗣️ "Price thori kam karein / Discount milega?"</span>
+                          <button type="button" class="btn-mini-copy">Copy Rebuttal</button>
+                        </div>
+                        <p class="obj-ans">"Hamari prices 100% dedicated hardware aur clean private IP ke mutabiq fixed hain. Agar budget kam hai toh Little EU (₨1,500/mo) available hai!"</p>
+                      </div>
+
+                      <div class="objection-card" data-copy="Dedicated IPs aur server costs ki waja se free trial available nahi hota, lekin payment confirm hotay hi working hours mein 30 minutes mein fast delivery ho jati hai! 🚀">
+                        <div class="obj-header">
+                          <span class="obj-q">🗣️ "Free test / trial mil sakta hai?"</span>
+                          <button type="button" class="btn-mini-copy">Copy Rebuttal</button>
+                        </div>
+                        <p class="obj-ans">"Dedicated IPs aur server costs ki waja se free trial available nahi hota, lekin payment confirm hotay hi working hours mein 30 minutes mein fast delivery ho jati hai! 🚀"</p>
+                      </div>
+
+                      <div class="objection-card" data-copy="Jee bilkul! Android ya iPhone par Play Store / App Store se Microsoft 'RD Client' app download kar ke 1-click connect kar sakte hain. 📱">
+                        <div class="obj-header">
+                          <span class="obj-q">🗣️ "Mobile / iPhone se chalay ga?"</span>
+                          <button type="button" class="btn-mini-copy">Copy Rebuttal</button>
+                        </div>
+                        <p class="obj-ans">"Jee bilkul! Android ya iPhone par Play Store / App Store se Microsoft 'RD Client' app download kar ke 1-click connect kar sakte hain. 📱"</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- STAGE 3 VIEW -->
+              <div class="cockpit-stage-view" id="cockpitStage3">
+                <div class="panel-card stage-command-card">
+                  <div class="command-card-header">
+                    <div class="header-left">
+                      <span class="stage-badge-lg badge-green">Stage 03 · Payment Collection</span>
+                      <h2>Provide Accounts & Request Deposit Screenshot</h2>
+                    </div>
+                    <div class="header-right">
+                      <span class="time-estimate">⏱️ Target: &lt; 1 min</span>
+                    </div>
+                  </div>
+
+                  <div class="strategy-guidance">
+                    <div class="guide-icon">💡</div>
+                    <p><strong>Goal:</strong> Provide verified official accounts and strictly remind customer to submit their deposit slip / screenshot for the deployment queue.</p>
+                  </div>
+
+                  <!-- WhatsApp Script Card -->
+                  <div class="cockpit-script-box">
+                    <div class="script-box-header">
+                      <span class="script-type-tag">💬 Ready-to-Send Payment Message</span>
+                      <span class="script-lang-tag">All Official Accounts</span>
+                    </div>
+                    <p class="cockpit-script-text" id="cockpitScript3">Aap in official accounts par payment transfer kar sakte hain:
+
+📱 *JazzCash / Raast / NayaPay*: `03014149031`
+Account Title: *Muhammad Jawad Iqbal Khan*
+
+🏦 *UBL Bank*:
+A/C: `300841314`
+IBAN: `PK77UNIL0109000300841314`
+Title: *Muhammad Jawad Iqbal Khan*
+
+⚠️ *Payment karne ke baad screenshot / receipt yahan zaroor share karein taake order queue mein enter ho sakay!* 🧾</p>
+                    <div class="cockpit-script-actions">
+                      <button type="button" class="btn-cockpit-copy" data-target="cockpitScript3">📋 Copy Accounts</button>
+                      <button type="button" class="btn-cockpit-chat" data-target="cockpitScript3">💬 Insert in Chat Simulator</button>
+                      <button type="button" class="btn-cockpit-next" data-goto="4">Next: Verification ➔</button>
+                    </div>
+                  </div>
+
+                  <!-- Quick Account Copy Tiles -->
+                  <div class="battlecards-section">
+                    <h3>⚡ 1-Click Fast Account Copy</h3>
+                    <div class="account-tiles-grid">
+                      <div class="acc-tile">
+                        <div class="acc-tile-top">
+                          <span class="acc-badge">JazzCash / Raast</span>
+                          <button type="button" class="btn-tile-copy" data-copy="03014149031">Copy Number</button>
+                        </div>
+                        <strong>03014149031</strong>
+                        <span>Muhammad Jawad Iqbal Khan</span>
+                      </div>
+
+                      <div class="acc-tile">
+                        <div class="acc-tile-top">
+                          <span class="acc-badge">NayaPay</span>
+                          <button type="button" class="btn-tile-copy" data-copy="03014149031">Copy Number</button>
+                        </div>
+                        <strong>03014149031</strong>
+                        <span>Muhammad Jawad Iqbal Khan</span>
+                      </div>
+
+                      <div class="acc-tile">
+                        <div class="acc-tile-top">
+                          <span class="acc-badge">UBL Bank</span>
+                          <button type="button" class="btn-tile-copy" data-copy="PK77UNIL0109000300841314">Copy IBAN</button>
+                        </div>
+                        <strong>A/C: 300841314</strong>
+                        <span>IBAN: PK77UNIL0109000300841314</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- STAGE 4 VIEW -->
+              <div class="cockpit-stage-view" id="cockpitStage4">
+                <div class="panel-card stage-command-card">
+                  <div class="command-card-header">
+                    <div class="header-left">
+                      <span class="stage-badge-lg badge-amber">Stage 04 · Verification & SLA</span>
+                      <h2>Acknowledge Receipt & Set 30-Min Delivery Expectation</h2>
+                    </div>
+                    <div class="header-right">
+                      <span class="time-estimate">⏱️ Target: &lt; 30 secs</span>
+                    </div>
+                  </div>
+
+                  <div class="strategy-guidance">
+                    <div class="guide-icon">💡</div>
+                    <p><strong>Goal:</strong> Reassure the customer that the payment is in the Owner Verification queue and guarantee 30-min setup SLA during working hours (9 AM - 12 AM PKT).</p>
+                  </div>
+
+                  <!-- WhatsApp Script Card -->
+                  <div class="cockpit-script-box">
+                    <div class="script-box-header">
+                      <span class="script-type-tag">💬 Ready-to-Send Verification Acknowledgment</span>
+                      <span class="script-lang-tag">SLA Assurance</span>
+                    </div>
+                    <p class="cockpit-script-text" id="cockpitScript4">Shukriya! Aapki payment receipt receive ho gayi hai. 🧾
+
+🚨 Policy ke mutabiq Owner bank/wallet deposit verify kareinge. 
+Jaise hi verification complete hoti hai (working hours 9 AM – 12 AM PKT mein target *within 30 minutes*), aapka dedicated RDP prepare kar ke Dedicated IP, Username aur Password yahan send kar diye jayeinge! 🚀</p>
+                    <div class="cockpit-script-actions">
+                      <button type="button" class="btn-cockpit-copy" data-target="cockpitScript4">📋 Copy Acknowledgment</button>
+                      <button type="button" class="btn-cockpit-chat" data-target="cockpitScript4">💬 Insert in Chat Simulator</button>
+                      <button type="button" class="btn-cockpit-next" data-goto="5">Next: Convert & Deliver ➔</button>
+                    </div>
+                  </div>
+
+                  <!-- SLA & Operating Hours Rules -->
+                  <div class="battlecards-section">
+                    <h3>⏰ SLA & Timings Reference</h3>
+                    <div class="sla-rules-grid">
+                      <div class="sla-card">
+                        <span class="sla-icon">🟢</span>
+                        <div>
+                          <strong>Working Hours (9 AM – 12 AM PKT):</strong>
+                          <p>Delivery SLA is <strong>within 30 minutes</strong> of owner bank deposit confirmation.</p>
+                        </div>
+                      </div>
+                      <div class="sla-card">
+                        <span class="sla-icon">🌙</span>
+                        <div>
+                          <strong>After 12:00 AM Midnight:</strong>
+                          <p>Orders received after 12 AM are queued and delivered first thing in the morning from 9:00 AM.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- STAGE 5 VIEW -->
+              <div class="cockpit-stage-view" id="cockpitStage5">
+                <div class="panel-card stage-command-card">
+                  <div class="command-card-header">
+                    <div class="header-left">
+                      <span class="stage-badge-lg badge-cyan">Stage 05 · Convert Order & Deliver</span>
+                      <h2>Convert Lead to Order & Deliver Credentials</h2>
+                    </div>
+                    <div class="header-right">
+                      <span class="time-estimate">⏱️ Final Milestone</span>
+                    </div>
+                  </div>
+
+                  <div class="strategy-guidance">
+                    <div class="guide-icon">🚀</div>
+                    <p><strong>Goal:</strong> Log the transaction record in the Orders Hub (Tab 5), assign the private dedicated IP, and send the official Section 6 delivery script.</p>
+                  </div>
+
+                  <!-- Direct Order Conversion Box -->
+                  <div class="cockpit-conversion-banner">
+                    <div class="conv-banner-left">
+                      <div class="conv-icon">⚡</div>
+                      <div>
+                        <h3>Ready to Finalize this Order?</h3>
+                        <p>1-Click transfers customer info, selected plan, and region into the Order Creation Hub.</p>
+                      </div>
+                    </div>
+                    <button type="button" id="btnCockpitConvertOrder" class="btn-cockpit-convert-big">
+                      🚀 Open Order Creator (Tab 5)
+                    </button>
+                  </div>
+
+                  <!-- Section 6 Delivery Script -->
+                  <div class="cockpit-script-box" style="margin-top: 18px;">
+                    <div class="script-box-header">
+                      <span class="script-type-tag">💬 Section 6 Official Delivery Template</span>
+                      <span class="script-lang-tag">WhatsApp Credentials</span>
+                    </div>
+                    <p class="cockpit-script-text" id="cockpitScript5">Assalam-o-Alaikum! Aapka PakCloudRDP tayyar hai 🚀
+
+🖥️ *IP*: [ENTER_IP]
+👤 *Username*: Administrator
+🔑 *Password*: [ENTER_PASSWORD]
+
+⚡ *Next Steps*:
+1. Windows: Press Win+R, type `mstsc` aur IP enter karein.
+2. Mobile: Play Store / App Store se "RD Client" app download karein.
+3. Login ke baad apna password change kar lein.
+
+Koi issue ho to yahan rabta karein! 👍</p>
+                    <div class="cockpit-script-actions">
+                      <button type="button" class="btn-cockpit-copy" data-target="cockpitScript5">📋 Copy Delivery Script</button>
+                      <button type="button" class="btn-cockpit-chat" data-target="cockpitScript5">💬 Insert in Chat Simulator</button>
+                    </div>
+                  </div>
+
+                  <!-- Post Delivery Checklist -->
+                  <div class="battlecards-section">
+                    <h3>✅ Post-Delivery Customer Care Checklist</h3>
+                    <div class="match-grid">
+                      <div class="match-card">
+                        <span class="match-trigger">1. Connection Confirmation</span>
+                        <span class="match-detail">Ask customer to test login and confirm desktop opens smoothly.</span>
+                      </div>
+                      <div class="match-card">
+                        <span class="match-trigger">2. Password Security</span>
+                        <span class="match-detail">Remind them to change Windows administrator password for security.</span>
+                      </div>
+                      <div class="match-card">
+                        <span class="match-trigger">3. Renewal Cycle</span>
+                        <span class="match-detail">System sends reminder 3 days before monthly cycle ends.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: AGENT COPILOT & QUICK REPLIES -->
+      <section id="tab-copilot" class="tab-pane">
+
+        <div class="copilot-grid">
+          <!-- LEFT: QUOTATION GENERATOR (CHIP SELECTORS) -->
+          <div class="panel-card">
+            <div class="card-header-flex">
+              <div>
+                <h2>⚡ 1-Click WhatsApp Quotation Generator</h2>
+                <p class="panel-desc">Click any Plan & Region to immediately generate formatted WhatsApp text:</p>
+              </div>
+            </div>
+
+            <!-- Hidden input for backwards-compatibility with existing script references -->
+            <input type="hidden" id="quotePlanSelect" value="starter">
+            <input type="hidden" id="quoteRegionSelect" value="eu">
+
+            <!-- 1. PLAN SELECTOR CHIPS GRID -->
+            <div class="selector-section">
+              <div class="selector-header">
+                <span class="selector-title">1️⃣ Select Plan</span>
+                <span class="selector-current-badge" id="activePlanBadge">Starter · 4 vCPU / 8 GB</span>
+              </div>
+              <div class="plan-chips-grid" id="planChipsGrid">
+                <button type="button" class="plan-chip" data-plan="little">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Little</span>
+                    <span class="plan-tag tag-budget">Budget</span>
+                  </div>
+                  <div class="plan-specs-text">1 vCPU · 3GB · 30GB</div>
+                </button>
+
+                <button type="button" class="plan-chip active" data-plan="starter">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Starter</span>
+                    <span class="plan-tag tag-popular">🔥 Popular</span>
+                  </div>
+                  <div class="plan-specs-text">4 vCPU · 8GB · 75GB</div>
+                </button>
+
+                <button type="button" class="plan-chip" data-plan="standard">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Standard</span>
+                    <span class="plan-tag tag-value">⭐ Value</span>
+                  </div>
+                  <div class="plan-specs-text">6 vCPU · 12GB · 100GB</div>
+                </button>
+
+                <button type="button" class="plan-chip" data-plan="plus">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Plus</span>
+                    <span class="plan-tag tag-pro">Power</span>
+                  </div>
+                  <div class="plan-specs-text">8 vCPU · 24GB · 200GB</div>
+                </button>
+
+                <button type="button" class="plan-chip" data-plan="pro">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Pro</span>
+                    <span class="plan-tag tag-pro">Heavy</span>
+                  </div>
+                  <div class="plan-specs-text">12 vCPU · 48GB · 250GB</div>
+                </button>
+
+                <button type="button" class="plan-chip" data-plan="elite">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Elite</span>
+                    <span class="plan-tag tag-ent">Enterprise</span>
+                  </div>
+                  <div class="plan-specs-text">16 vCPU · 64GB · 300GB</div>
+                </button>
+
+                <button type="button" class="plan-chip" data-plan="flagship">
+                  <div class="plan-chip-top">
+                    <span class="plan-name">Flagship</span>
+                    <span class="plan-tag tag-ent">Max Beast</span>
+                  </div>
+                  <div class="plan-specs-text">18 vCPU · 96GB · 350GB</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. REGION SELECTOR PILLS GRID -->
+            <div class="selector-section" style="margin-top: 14px;">
+              <div class="selector-header">
+                <span class="selector-title">2️⃣ Select Region</span>
+                <span class="selector-current-badge" id="activeRegionBadge">🇪🇺 EU (Europe)</span>
+              </div>
+              <div class="region-chips-grid" id="regionChipsGrid">
+                <button type="button" class="region-chip active" data-region="eu">
+                  <span class="region-flag">🇪🇺</span>
+                  <span class="region-info">
+                    <span class="region-name">EU</span>
+                    <span class="region-sub">Cheapest</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="uk">
+                  <span class="region-flag">🇬🇧</span>
+                  <span class="region-info">
+                    <span class="region-name">UK</span>
+                    <span class="region-sub">London</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="us">
+                  <span class="region-flag">🇺🇸</span>
+                  <span class="region-info">
+                    <span class="region-name">US</span>
+                    <span class="region-sub">General</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="us-c">
+                  <span class="region-flag">🇺🇸</span>
+                  <span class="region-info">
+                    <span class="region-name">US Central</span>
+                    <span class="region-sub">Midwest</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="us-w">
+                  <span class="region-flag">🇺🇸</span>
+                  <span class="region-info">
+                    <span class="region-name">US West</span>
+                    <span class="region-sub">West Coast</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="us-e">
+                  <span class="region-flag">🇺🇸</span>
+                  <span class="region-info">
+                    <span class="region-name">US East</span>
+                    <span class="region-sub">East Coast</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="in">
+                  <span class="region-flag">🇮🇳</span>
+                  <span class="region-info">
+                    <span class="region-name">India</span>
+                    <span class="region-sub">Low Ping</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="au">
+                  <span class="region-flag">🇦🇺</span>
+                  <span class="region-info">
+                    <span class="region-name">Australia</span>
+                    <span class="region-sub">Sydney</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="sg">
+                  <span class="region-flag">🇸🇬</span>
+                  <span class="region-info">
+                    <span class="region-name">Singapore</span>
+                    <span class="region-sub">Asia Hub</span>
+                  </span>
+                </button>
+
+                <button type="button" class="region-chip" data-region="jp">
+                  <span class="region-flag">🇯🇵</span>
+                  <span class="region-info">
+                    <span class="region-name">Japan</span>
+                    <span class="region-sub">Tokyo</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. QUOTE PREVIEW OUTPUT -->
+            <div class="quote-preview-box">
+              <div class="quote-price-tag">
+                <span class="price-label">Fixed Monthly Price (PKR):</span>
+                <span class="price-value" id="quotePriceDisplay">₨2,800 / Month</span>
+              </div>
+              <textarea id="quoteTextSnippet" class="code-box" rows="8" readonly></textarea>
+              <div class="quote-action-buttons">
+                <button class="btn btn-whatsapp" id="copyQuoteBtn" style="flex: 1;">
+                  📋 Copy WhatsApp Quotation
+                </button>
+                <button class="btn btn-primary" id="insertQuoteBtn" title="Send this quotation directly into the chat simulator">
+                  💬 Insert into Chat
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: SEARCHABLE CANNED RESPONSES & GOLDEN RULES -->
+          <div class="panel-card">
+            <div class="card-header-flex">
+              <div>
+                <h2>💬 Canned Quick Replies (Search & 1-Click Action)</h2>
+                <p class="panel-desc">Instant replies for standard customer queries:</p>
+              </div>
+            </div>
+
+            <!-- Search & Filter Controls -->
+            <div class="canned-search-container">
+              <div class="canned-search-wrapper">
+                <span class="canned-search-icon">🔍</span>
+                <input type="text" id="cannedSearchInput" class="canned-search-input" placeholder="Search replies (e.g. payment, jazz, delivery, shared, renew)...">
+                <button type="button" id="clearCannedSearchBtn" class="canned-clear-btn" style="display: none;">✕</button>
+              </div>
+            </div>
+
+            <!-- Category Filter Pills -->
+            <div class="canned-category-bar" id="cannedCategoryPills">
+              <button class="canned-cat-btn active" data-cat="all">All (<span id="cannedCountAll">26</span>)</button>
+              <button class="canned-cat-btn" data-cat="payment">💳 Payment & Proof</button>
+              <button class="canned-cat-btn" data-cat="delivery">🚀 Delivery & Setup</button>
+              <button class="canned-cat-btn" data-cat="pricing">💰 Pricing & Plans</button>
+              <button class="canned-cat-btn" data-cat="specs">⚖️ Specs & Dedicated IP</button>
+              <button class="canned-cat-btn" data-cat="usage">🎬 Allowed Uses & Rules</button>
+              <button class="canned-cat-btn" data-cat="renew">🔄 Renew, IP & Upgrades</button>
+              <button class="canned-cat-btn" data-cat="policy">🚨 Escalations & Policy</button>
+            </div>
+
+            <!-- Canned Items List -->
+            <div class="canned-list" id="cannedList">
+              <!-- 1. PAYMENT -->
+              <div class="canned-item" data-cat="payment" data-keywords="jazzcash raast nayapay ubl bank account title iban payment transfer money accounts">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>💳 Official Payment Accounts</strong>
+                    <span class="cat-tag">Payment</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-payment">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-payment">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-payment" class="canned-text">JazzCash / Raast / NayaPay: 03014149031 (Muhammad Jawad Iqbal Khan)
+UBL Bank: A/C 300841314 | IBAN: PK77UNIL0109000300841314
+⚠️ Please send screenshot/receipt with Transaction ID after payment for owner verification.</p>
+              </div>
+
+              <div class="canned-item" data-cat="payment" data-keywords="screenshot receipt transaction id proof verify payment confirmation">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🧾 Payment Proof & Receipt Request</strong>
+                    <span class="cat-tag">Payment</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-proof-req">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-proof-req">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-proof-req" class="canned-text">Jee payment transfer karne ke baad kindly Transaction ID aur receipt ka clear screenshot yahan send kar dein taake hum owner se verify karwa kar aapki dedicated machine immediate prepare kar sakein! 🧾✨</p>
+              </div>
+
+              <div class="canned-item" data-cat="payment" data-keywords="verifying checking owner confirmation payment wait status pending">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⏳ Owner Verification in Progress</strong>
+                    <span class="cat-tag">Payment</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-verify-prog">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-verify-prog">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-verify-prog" class="canned-text">Aapki payment receipt hum ne owner verification ke liye forward kar di hai. Funds confirm hotay hi within 30 minutes aapko RDP ke credentials deliver kar diye jayein ge. ⏱️🚀</p>
+              </div>
+
+              <!-- 2. DELIVERY & SETUP -->
+              <div class="canned-item" data-cat="delivery" data-keywords="how long does it take to set up setup time activation ready account setup delivery time minutes hours sla">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⏱️ Account Setup Time & SLA (30 Minutes)</strong>
+                    <span class="cat-tag">Delivery</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-setup-time">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-setup-time">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-setup-time" class="canned-text">Working hours (*9:00 AM – 12:00 AM PKT*) mein payment owner verify hotay hi aapka dedicated RDP *within 30 minutes* prepare ho jata hai! 🚀
+
+Aapko WhatsApp par Dedicated IP, Username aur Password foran send kar diye jatay hain. (12 AM ke baad aane walay orders aglay roz subah deliver hotay hain).</p>
+              </div>
+
+              <div class="canned-item" data-cat="delivery" data-keywords="delivery time speed how long activation ready setup working hours sla">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⏱️ 30-Minute Fast Delivery SLA</strong>
+                    <span class="cat-tag">Delivery</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-delivery">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-delivery">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-delivery" class="canned-text">Working hours (9 AM – 12 AM PKT) mein payment owner verify hotay hi dedicated RDP *30 minutes* ke andar deliver ho jata hai! IP, Username aur Password aapko direct WhatsApp par send kar diye jayein ge. 🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="delivery" data-keywords="mobile phone iphone android connect app rd client remote desktop phone setup smartphone">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>📱 How to Connect from Mobile (Android / iPhone)</strong>
+                    <span class="cat-tag">Delivery</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-mobile-connect">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-mobile-connect">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-mobile-connect" class="canned-text">Jee bilkul! Aap apne Android ya iPhone se bhi asani se connect kar sakte hain:
+1. Play Store / App Store se 'RD Client' (Microsoft Remote Desktop) app install karein.
+2. '+' icon daba kar 'Add PC' select karein.
+3. Hamari di gayi Dedicated IP enter karein.
+4. Diya gaya Username aur Password enter kar ke Connect karein! 📱🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="delivery" data-keywords="late night 12 am morning delay delivery time after midnight">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🌙 Late Night Order Notice</strong>
+                    <span class="cat-tag">Delivery</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-night">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-night">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-night" class="canned-text">Working hours (9 AM – 12 AM PKT) ke baad place kiye gaye orders aglay roz subah first priority par deliver hotay hain. Aapka order queue mein save ho chuka hai! 🌙☕</p>
+              </div>
+
+              <div class="canned-item" data-cat="delivery" data-keywords="how to connect login remote desktop mstsc credentials setup guide windows pc">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>💻 How to Connect via Windows RDP (mstsc)</strong>
+                    <span class="cat-tag">Delivery</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-connect-guide">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-connect-guide">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-connect-guide" class="canned-text">Windows PC se connect karne ka tareeqa:
+1. Apne computer par Start Menu khol kar 'Remote Desktop Connection' (mstsc.exe) open karein.
+2. Di gayi Dedicated IP enter karein aur 'Connect' par click karein.
+3. Diya gaya Username (Administrator) aur Password enter karein. 🚀</p>
+              </div>
+
+              <!-- 3. PRICING & RECOMMENDATIONS -->
+              <div class="canned-item" data-cat="pricing" data-keywords="all plans with price all plan name with price price list rate card packages cost all pricing monthly rate">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>💵 All Plans & Pricing (Complete List)</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-all-prices">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-all-prices">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-all-prices" class="canned-text">💵 *PAKCLOUDRDP — COMPLETE PRICE LIST (EU / Starting Rates)*
+━━━━━━━━━━━━━━━━━━
+1️⃣ *Little (1 vCPU / 3 GB RAM)*: ₨1,500/month
+2️⃣ *Starter (4 vCPU / 8 GB RAM)*: ₨2,800/month ⭐ *(Most Popular)*
+3️⃣ *Standard (6 vCPU / 12 GB RAM)*: ₨3,800/month
+4️⃣ *Plus (8 vCPU / 24 GB RAM)*: ₨7,000/month
+5️⃣ *Pro (12 vCPU / 48 GB RAM)*: ₨12,500/month
+6️⃣ *Elite (16 vCPU / 64 GB RAM)*: ₨18,500/month
+7️⃣ *Flagship (18 vCPU / 96 GB RAM)*: ₨24,400/month
+━━━━━━━━━━━━━━━━━━
+🌍 *Available Regions*: 🇪🇺 EU, 🇬🇧 UK, 🇺🇸 US, 🇮🇳 India, 🇦🇺 Australia, 🇸🇬 Singapore, 🇯🇵 Japan.
+*(US Central, West & East sub-locations also available upon request).*</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="cheapest sasta budget low price little eu 1500 entry level small">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🟢 Cheapest Entry Plan — Little EU (₨1,500/mo)</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-cheapest">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-cheapest">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-cheapest" class="canned-text">Humara sab se economical plan *Little EU* hai:
+💰 *₨1,500/month*
+⚙️ *Specs*: 1 vCPU · 3 GB RAM · 30 GB NVMe (ya 60 GB SSD)
+🌐 100% Dedicated IP · Unmetered Bandwidth
+
+Normal browsing, light work aur lightweight tasks ke liye best hai! ✅</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="starter recommended best value 2800 popular eu 4 vcpu 8gb ram specs">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⚡ Best Value & Recommended — Starter EU (₨2,800/mo)</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-starter-rec">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-starter-rec">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-starter-rec" class="canned-text">Sab se popular aur recommended plan *Starter EU* hai:
+💰 *₨2,800/month*
+⚙️ *Specs*: 4 vCPU · 8 GB RAM · 75 GB NVMe (ya 150 GB SSD)
+🌐 100% Dedicated IP · 1 Gbps Port
+
+Smooth multitasking, browsing aur heavy office tools ke liye perfect choice hai! 🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="fixed price pkr rate dollar exchange monthly rate stability no change">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🎯 Fixed PKR Monthly Pricing Policy</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-fixed-pkr">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-fixed-pkr">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-fixed-pkr" class="canned-text">PakCloudRDP par tamaam prices PKR mein *Fixed Monthly Prices* hain. Daily currency exchange rates ya dollar fluctuations se aapki monthly fee par koi asar nahi hota. ✅</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="discount concession kam price bargain offer cheap reduction kam karein">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🛑 No Discounts / Fixed Pricing Policy</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-discount-no">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-discount-no">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-discount-no" class="canned-text">Hamari tamaam pricing 100% dedicated hardware aur private dedicated IP ke mutabiq pre-calculated aur fixed hai, is liye standard discount offer nahi hota. Best value ke liye EU region recommend kiya jata hai. 🤝</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="longterm long term discount 3 months 6 months yearly annual advance payment bulk multi month concession quarterly">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>📅 Long-Term & Multi-Month Discount (3 / 6 / 12 Mo)</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-longterm-disc">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-longterm-disc">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-longterm-disc" class="canned-text">PakCloudRDP par standard pricing monthly basis par already lowest direct rates par fixed hai.
+
+Agar aap *3 Months, 6 Months ya 1 Year* ki advance payment ya multiple machines lena chahte hain, to hum aapka case *Owner / Management ko escalate* kar dete hain for special custom long-term package approval! 
+
+Kindly batayein aapko kaunsa plan aur kitne months ke liye chahiye? 🤝</p>
+              </div>
+
+              <div class="canned-item" data-cat="pricing" data-keywords="trial free test demo testing checking try azmana free checking">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🚫 Free Trial Policy (Unavailable)</strong>
+                    <span class="cat-tag">Pricing</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-no-trial">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-no-trial">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-no-trial" class="canned-text">Dedicated infrastructure aur clean IP assignment ki wajah se free trials currently available nahi hain. Payment confirm hotay hi machine 30 minutes ke andar prepare kar ke credentials deliver kar diye jatay hain. ⚡</p>
+              </div>
+
+              <!-- 4. SPECS & DEDICATED IP -->
+              <div class="canned-item" data-cat="specs" data-keywords="what is rdp remote desktop explanation meaning introduction kaise kaam karta hai definition kya hota hai">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>❓ What is RDP & How Does It Work?</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-what-is-rdp">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-what-is-rdp">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-what-is-rdp" class="canned-text">RDP (Remote Desktop Protocol) ka matlab hai ke aapko cloud mein ek 100% Dedicated Windows PC milta hai jise aap apne phone, laptop ya kisi bhi computer se internet ke zariye chalate hain. 🖥️✨
+
+• Is par ultra-fast 1 Gbps internet chalta hai.
+• Ye 24/7 online rehta hai (downloads ya background tasks ke liye).
+• Aapko apna private dedicated IP aur Administrator login milta hai jahan full privacy aapki hoti hai! 🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="all plans with spec all plans specifications hardware ram vcpu nvme storage breakdown complete list specs">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⚙️ All 7 Plans with Hardware Specs</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-all-specs">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-all-specs">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-all-specs" class="canned-text">🖥️ *PAKCLOUDRDP — COMPLETE HARDWARE SPECIFICATIONS*
+━━━━━━━━━━━━━━━━━━
+1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe (60 GB SSD)
+2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe (150 GB SSD)
+3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe (200 GB SSD)
+4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe (300 GB SSD)
+5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe (1 TB SSD)
+6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe (1.2 TB SSD)
+7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe (1.4 TB SSD)
+━━━━━━━━━━━━━━━━━━
+🌐 *All include*: 100% Dedicated IP · 1 Gbps Port · Unmetered Bandwidth · Windows Admin Access! 🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="gpu graphics card gaming rendering emulator graphic rdp nvidia high cpu vram">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🎮 GPU RDP Inquiry & High CPU Alternative</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-gpu-rdp">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-gpu-rdp">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-gpu-rdp" class="canned-text">Filhal hamaray paas dedicated high-performance CPU-based Windows RDPs available hain (up to 18 vCPU / 96 GB RAM / NVMe storage) jo web browsing, automation, multiple apps aur heavy workloads ke liye super fast hain. ⚡
+
+Dedicated GPU (Nvidia/Gaming/Heavy 3D rendering) machines standard inventory mein nahi hain. Agar aapko enterprise custom GPU setup chahiye to hum owner ko inquiry forward kar sakte hain! 🤝</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="shared dedicated private ip speed difference comparison why expensive">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⚖️ Shared vs Dedicated Explanation</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-shared">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-shared">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-shared" class="canned-text">Shared RDP mein resources aur IP doosre users ke saath share hoti hain. PakCloudRDP par aapko *100% Dedicated Machine + Dedicated Private IP* milti hai jahan full speed, security aur full privacy aapki hoti hai. 🚀</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="speed internet bandwidth limit 1gbps port download upload uplink port">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>📶 1 Gbps Network & Unmetered Bandwidth</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-bandwidth">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-bandwidth">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-bandwidth" class="canned-text">Har dedicated RDP ke saath *1 Gbps uplink port* aur *Unmetered Bandwidth* di jati hai. Sustained normal speeds 200–500 Mbps aati hain. Normal daily work, streaming aur browsing ke liye koi data limit nahi hai. 🌐</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="regions locations countries europe uk usa india australia singapore japan">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🌍 9 Global Regions Available</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-regions-all">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-regions-all">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-regions-all" class="canned-text">PakCloudRDP par 9 global locations available hain:
+🇪🇺 EU (Cheapest) | 🇬🇧 UK | 🇺🇸 US Central | 🇺🇸 US West | 🇺🇸 US East | 🇮🇳 India (Low Ping) | 🇦🇺 Australia | 🇸🇬 Singapore | 🇯🇵 Japan
+Aap apni requirement ke mutabiq region select kar sakte hain! 🌍</p>
+              </div>
+
+              <div class="canned-item" data-cat="specs" data-keywords="india region latency ping fast south asia nearest low ping">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🇮🇳 India Region Low Ping / Latency Note</strong>
+                    <span class="cat-tag">Specs</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-india-ping">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-india-ping">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-india-ping" class="canned-text">South Asia / Pakistan se sab se kam ping aur ultra-low latency ke liye *India (IN)* region best hai. Indian IPs local applications aur low-latency streaming ke liye preferred hain. 🇮🇳⚡</p>
+              </div>
+
+              <!-- 5. ALLOWED USES & SUPPORT -->
+              <div class="canned-item" data-cat="usage" data-keywords="admin administrator rights access install software tools permissions control">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>👑 Full Administrator Access & Custom Software</strong>
+                    <span class="cat-tag">Usage</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-admin-access">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-admin-access">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-admin-access" class="canned-text">Jee aapko machine ka *Full Administrator (Root)* access milta hai! Aap apne zaroori legal software, Chrome browsers, bots, trading platforms aur tools directly install aur run kar sakte hain. ✅</p>
+              </div>
+              <div class="canned-item" data-cat="usage" data-keywords="netflix streaming banking work browsing legal allowed tools prohibited chrome">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🎬 Allowed Uses (Streaming, Work, Netflix)</strong>
+                    <span class="cat-tag">Usage</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-netflix">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-netflix">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-netflix" class="canned-text">PakCloudRDP par aap apna dedicated Windows system normal work, browsing, streaming (Netflix etc.) aur legal tools ke liye asani se use kar sakte hain. Full desktop access aapke paas hota hai. ✅</p>
+              </div>
+
+              <div class="canned-item" data-cat="usage" data-keywords="hacking prohibited scam carding ddos illegal policy ban violation tools attack">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🚫 Strictly Prohibited Activities Warning</strong>
+                    <span class="cat-tag">Usage</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-prohibited">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-prohibited">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-prohibited" class="canned-text">⚠️ Hacking, scamming, spamming, DDoS attacks, carding ya koi bhi illegal activity strictly prohibited hai. Aisi activities par RDP foran terminate kar diya jata hai without refund. Clean and secure environment ensure kiya jata hai. 🚫</p>
+              </div>
+
+              <div class="canned-item" data-cat="usage" data-keywords="support hours help timing working hours troubleshooting contact connectivity">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🛠️ Support Scope & Hours (9 AM – 12 AM PKT)</strong>
+                    <span class="cat-tag">Usage</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-support-scope">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-support-scope">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-support-scope" class="canned-text">Humari support team rozana *9:00 AM se 12:00 AM PKT* tak active hoti hai. Connectivity issues aur password reset support mein shamil hain. Working hours mein response target under 15 minutes hota hai! 🕒📞</p>
+              </div>
+
+              <!-- 6. RENEW, IP & UPGRADES -->
+              <div class="canned-item" data-cat="renew" data-keywords="renew renewal expiry reminder billing date monthly grace data wipe payment due">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🔄 Renewal & 3-Day Expiry Reminder</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-renew">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-renew">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-renew" class="canned-text">RDP monthly cycle par active hota hai. Expiry se *3 din pehle* aapko renewal reminder mil jata hai. Apni machine aur IP ko active rakhne ke liye expiry date se pehle payment verify karwayen. 🔄📅</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="grace period suspend data loss backup termination wipe delete nonpayment">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⚠️ 7-Day Suspension & Permanent Data Loss</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-suspension-warn">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-suspension-warn">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-suspension-warn" class="canned-text">Expiry date par renew na hone par RDP suspend ho jata hai. Data sirf *7 days suspension window* tak rehta hai, us ke baad machine permanently wipe ho jati hai aur IP release ho jati hai. Data recovery possible nahi hoti. ⚠️</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="upgrade downgrade switch plan change higher ram cpu storage boost">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⬆️ Instant Plan Upgrade Policy</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-upgrade">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-upgrade">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-upgrade" class="canned-text">Aap kisi bhi waqt higher plan par upgrade kar sakte hain! Aapko remaining days ka price difference pay karna hota hai aur upgraded system immediate ready kar diya jata hai. ⚡</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="downgrade lower plan switch reduce ram next month cycle monthly">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>⬇️ Downgrade at Renewal Policy</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-downgrade">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-downgrade">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-downgrade" class="canned-text">Plan downgrade sirf *next monthly billing cycle* ke renewal par apply hota hai. Mid-cycle mein downgrade possible nahi hota. 📅</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="ip change new ip replace ip cost free 5 dollar reason change">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🌐 IP Change Policy (1 Free / $5 Additional)</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-ip-change">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-ip-change">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-ip-change" class="canned-text">Har subscription ke sath *1 Free IP change* lifetime di jati hai. Is ke baad additional IP change ki fee $5 (₨1,450) hoti hai. IP change hone se purani machine ka data migrate nahi hota. 🌐</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="region change backup location switch transfer ip new machine data backup">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🌍 Region Change & Data Backup Notice</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-region">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-region">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-region" class="canned-text">Region change ka matlab *NEW MACHINE* hota hai. Data auto-migrate nahi hota, is liye region switch karne se pehle apna zaroori data backup zaroor download kar lein! ⚠️💾</p>
+              </div>
+
+              <div class="canned-item" data-cat="renew" data-keywords="multiple machines bulk 2 rdp 5 rdp fleet separate ips quantity order">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🖥️ Multiple Machines & Bulk Setup Policy</strong>
+                    <span class="cat-tag">Renewal</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-bulk">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-bulk">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-bulk" class="canned-text">Aap multiple machines order kar sakte hain. Har machine ka apna dedicated IP, separate credentials aur independent billing cycle hota hai. Bulk pricing ke liye inquiry owner ko forward ki jati hai. 🖥️🏢</p>
+              </div>
+
+              <!-- 7. ESCALATIONS & POLICY -->
+              <div class="canned-item" data-cat="policy" data-keywords="refund discount trial custom policy owner escalation manager review special">
+                <div class="canned-header">
+                  <div class="canned-title-wrap">
+                    <strong>🚨 Refund & Owner Escalation Notice</strong>
+                    <span class="cat-tag">Policy</span>
+                  </div>
+                  <div class="canned-actions">
+                    <button class="btn-copy" data-target="canned-escalate">Copy</button>
+                    <button class="btn-insert-chat" data-target="canned-escalate">Chat</button>
+                  </div>
+                </div>
+                <p id="canned-escalate" class="canned-text">Aapki request record kar ke senior management / owner ko escalate kar di gayi hai. Policy ke mutabiq owner review ke baad aapko WhatsApp par update provide kar di jaye gi. Shukriya! 🙏</p>
+              </div>
+            </div>
+
+            <div id="noCannedResults" class="no-results-msg" style="display: none;">
+              🔍 No quick replies match your search. Try another keyword.
+            </div>
+
+            <div class="golden-rules-box" style="margin-top: 14px;">
+              <h3>⭐ Team Golden Rules</h3>
+              <ul>
+                <li>✅ Quote PKR primarily (fixed monthly prices).</li>
+                <li>✅ 1 Customer = 1 Dedicated Machine = 1 Dedicated IP.</li>
+                <li>🚨 ONLY OWNER verifies payment (never confirm independently).</li>
+                <li>🚨 Never promise refunds or unauthorized discounts.</li>
+                <li>✅ 30 min delivery target during working hours (9 AM - 12 AM PKT).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PRICE MATRIX -->
+      <section id="tab-pricing" class="tab-pane">
+        <div class="panel-card">
+          <div class="matrix-header">
+            <div>
+              <h2>💵 PakCloudRDP Price Matrix — ₨/Month (PKR Fixed)</h2>
+              <p class="panel-desc">All 7 Plans across all 9 Global Regions. Single Source of Truth from Cheat Sheet.</p>
+            </div>
+            <div class="currency-tag">
+              <span>Internal Ref Rate: <strong>$1 = ₨290</strong></span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="matrix-table" id="matrixTable">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>vCPU</th>
+                  <th>RAM</th>
+                  <th>NVMe / SSD</th>
+                  <th>🇪🇺 EU</th>
+                  <th>🇬🇧 UK</th>
+                  <th>🇺🇸 US</th>
+                  <th>🇺🇸 US-C</th>
+                  <th>🇺🇸 US-W</th>
+                  <th>🇺🇸 US-E</th>
+                  <th>🇮🇳 IN</th>
+                  <th>🇦🇺 AU</th>
+                  <th>🇸🇬 SG</th>
+                  <th>🇯🇵 JP</th>
+                </tr>
+              </thead>
+              <tbody id="matrixTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: QUICK ORDERS & DELIVERY HUB -->
+      <section id="tab-orders" class="tab-pane">
+        <!-- TOP KPI STATS SUMMARY -->
+        <div class="orders-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-info">
+              <span class="kpi-title">Total Orders</span>
+              <span class="kpi-value" id="kpiTotalOrders">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">⏳</div>
+            <div class="kpi-info">
+              <span class="kpi-title">Pending Verification</span>
+              <span class="kpi-value kpi-warning" id="kpiPendingVerification">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">🚀</div>
+            <div class="kpi-info">
+              <span class="kpi-title">Delivered Active</span>
+              <span class="kpi-value kpi-success" id="kpiDelivered">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-info">
+              <span class="kpi-title">Monthly Revenue</span>
+              <span class="kpi-value kpi-revenue" id="kpiMonthlyRevenue">₨0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="orders-layout">
+          <!-- LEFT: LOG NEW ORDER -->
+          <div class="panel-card">
+            <div class="card-header-flex">
+              <div>
+                <h2>📋 Log Quick Order Record</h2>
+                <p class="panel-desc">Follows Section 22 of the WhatsApp Cheat Sheet:</p>
+              </div>
+            </div>
+            
+            <form id="createOrderForm">
+              <!-- Customer Input + Autofill button -->
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="orderCustomer">Customer Name / Phone:</label>
+                  <button type="button" id="autofillOrderBtn" class="btn-autofill" title="Autofill customer from current chat session">
+                    ⚡ Autofill from Chat
+                  </button>
+                </div>
+                <input type="text" id="orderCustomer" placeholder="e.g. Usman (+923001234567)" required class="form-input">
+              </div>
+
+              <!-- Package Selection -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="orderPlan">Plan:</label>
+                  <select id="orderPlan" class="form-select">
+                    <option value="little">Little (1 vCPU · 3 GB RAM)</option>
+                    <option value="starter" selected>Starter (4 vCPU · 8 GB RAM)</option>
+                    <option value="standard">Standard (6 vCPU · 12 GB RAM)</option>
+                    <option value="plus">Plus (8 vCPU · 24 GB RAM)</option>
+                    <option value="pro">Pro (12 vCPU · 48 GB RAM)</option>
+                    <option value="elite">Elite (16 vCPU · 64 GB RAM)</option>
+                    <option value="flagship">Flagship (18 vCPU · 96 GB RAM)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="orderRegion">Region:</label>
+                  <select id="orderRegion" class="form-select">
+                    <option value="eu" selected>🇪🇺 EU (Europe — Cheapest)</option>
+                    <option value="uk">🇬🇧 UK</option>
+                    <option value="us">🇺🇸 US (General — East Rate)</option>
+                    <option value="us-c">🇺🇸 US Central</option>
+                    <option value="us-w">🇺🇸 US West</option>
+                    <option value="us-e">🇺🇸 US East</option>
+                    <option value="in">🇮🇳 India (Low Ping)</option>
+                    <option value="au">🇦🇺 Australia</option>
+                    <option value="sg">🇸🇬 Singapore</option>
+                    <option value="jp">🇯🇵 Japan</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Live Price Banner -->
+              <div class="order-price-badge-banner" id="orderPriceBanner">
+                <span class="price-banner-text">Fixed Price:</span>
+                <span class="price-banner-val" id="orderLivePrice">₨2,800 / Month</span>
+                <span class="price-banner-sub" id="orderLiveSpecs">(4 vCPU · 8 GB RAM · 75 GB NVMe)</span>
+              </div>
+
+              <!-- Payment Details -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="orderPaymentMethod">Payment Account:</label>
+                  <select id="orderPaymentMethod" class="form-select">
+                    <option value="JazzCash">JazzCash (03014149031)</option>
+                    <option value="Raast">Raast (03014149031)</option>
+                    <option value="NayaPay">NayaPay (03014149031)</option>
+                    <option value="UBL Bank">UBL Bank (300841314)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="orderProof">Payment Proof:</label>
+                  <select id="orderProof" class="form-select">
+                    <option value="Received">Received (Screenshot) ✅</option>
+                    <option value="Pending">Pending ⏳</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Verification & Channel -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="orderOwnerVerification">Owner Verification:</label>
+                  <select id="orderOwnerVerification" class="form-select">
+                    <option value="Pending">Pending Owner Check 🚨</option>
+                    <option value="Confirmed">Confirmed by Owner ✅</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="orderChannel">Inquiry Channel:</label>
+                  <select id="orderChannel" class="form-select">
+                    <option value="WhatsApp">📱 WhatsApp</option>
+                    <option value="Messenger">💬 FB Messenger</option>
+                    <option value="Instagram">📸 Instagram DM</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Optional Notes -->
+              <div class="form-group">
+                <label for="orderNotes">Order Notes / Custom Requests:</label>
+                <input type="text" id="orderNotes" placeholder="e.g. Needs Windows Server 2022, clean IP" class="form-input">
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                ➕ Create Order Record & Copy WhatsApp Summary
+              </button>
+            </form>
+          </div>
+
+          <!-- RIGHT: ORDER LIST & MANAGEMENT -->
+          <div class="panel-card">
+            <div class="card-header-flex">
+              <div>
+                <h2>📦 Order Management Hub</h2>
+                <p class="panel-desc">Track active orders, verify payments, and deliver RDP credentials:</p>
+              </div>
+            </div>
+
+            <!-- Search & Status Filter -->
+            <div class="orders-filter-bar">
+              <div class="canned-search-wrapper" style="margin-bottom: 10px;">
+                <span class="canned-search-icon">🔍</span>
+                <input type="text" id="orderSearchInput" class="canned-search-input" placeholder="Search orders by customer, phone, plan, or IP...">
+                <button type="button" id="clearOrderSearchBtn" class="canned-clear-btn" style="display: none;">✕</button>
+              </div>
+
+              <div class="orders-status-filters" id="orderStatusFilters">
+                <button type="button" class="order-filter-btn active" data-status="all">All (<span id="filterCountAll">0</span>)</button>
+                <button type="button" class="order-filter-btn" data-status="pending">⏳ Pending (<span id="filterCountPending">0</span>)</button>
+                <button type="button" class="order-filter-btn" data-status="verified">✅ Verified (<span id="filterCountVerified">0</span>)</button>
+                <button type="button" class="order-filter-btn" data-status="delivered">🚀 Delivered (<span id="filterCountDelivered">0</span>)</button>
+              </div>
+            </div>
+
+            <div class="order-list" id="orderList">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div id="noOrdersMatchMsg" class="no-results-msg" style="display: none;">
+              🔍 No orders match your search criteria.
+            </div>
+          </div>
+        </div>
+
+        <!-- RDP DELIVERY MODAL -->
+        <div id="deliveryModal" class="custom-modal" style="display: none;">
+          <div class="modal-backdrop"></div>
+          <div class="modal-dialog panel-card">
+            <div class="modal-header">
+              <h3>🚀 Deliver Dedicated RDP Credentials</h3>
+              <button type="button" class="modal-close-btn" id="closeDeliveryModalBtn">✕</button>
+            </div>
+            <p class="panel-desc">Enter the assigned Dedicated IP to generate formatted Section 6 WhatsApp credentials:</p>
+
+            <form id="deliveryForm">
+              <input type="hidden" id="deliveryOrderId">
+              <div class="form-group">
+                <label>Assigned Dedicated IP:</label>
+                <input type="text" id="deliveryIp" placeholder="e.g. 194.163.150.45" required class="form-input">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Username:</label>
+                  <input type="text" id="deliveryUsername" value="Administrator" required class="form-input">
+                </div>
+                <div class="form-group">
+                  <label>Password:</label>
+                  <input type="text" id="deliveryPassword" value="PakCloud#2026!" required class="form-input">
+                </div>
+              </div>
+
+              <div class="quote-preview-box" style="margin-top: 10px;">
+                <label style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">WhatsApp Delivery Message Preview:</label>
+                <textarea id="deliveryPreviewText" class="code-box" rows="8" readonly></textarea>
+              </div>
+
+              <div class="modal-action-row" style="margin-top: 14px; display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-whatsapp" style="flex: 1;">
+                  📋 Save & Copy Delivery WhatsApp Text
+                </button>
+                <button type="button" class="btn btn-outline" id="cancelDeliveryBtn">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: OWNER ESCALATIONS -->
+      <section id="tab-escalations" class="tab-pane">
+        <div class="panel-card">
+          <div class="matrix-header">
+            <div>
+              <h2>🚨 Owner Escalation Center</h2>
+              <p class="panel-desc">All payment proofs, discount inquiries, refund requests, and outages flagged for Owner review.</p>
+            </div>
+            <button class="btn btn-outline" id="refreshEscalationsBtn">🔄 Refresh Queue</button>
+          </div>
+
+          <div style="margin-bottom:16px; padding:12px 14px; border:1px solid rgba(147,197,253,0.3); border-radius:8px; background:rgba(59,130,246,0.06); font-size:0.82rem; color:#CBD5E1; line-height:1.55;">
+            <strong style="color:#93C5FD;">How to use escalations:</strong>
+            <ol style="margin:6px 0 0 18px; padding:0;">
+              <li>A customer message that matches a trigger (payment proof, discount/refund request, outage, custom setup) is <b>auto-flagged</b> and a ticket appears here.</li>
+              <li>Open the ticket → <b>View customer chat history</b> shows the full prior conversation for context.</li>
+              <li>Pick an action:
+                <b>✅ Verify Payment & Send 30m ETA</b> (payment proofs),
+                <b>💸 Approve Custom Price Offer</b> (enter the approved monthly PKR),
+                <b>❌ Decline</b> (re-affirm fixed rates), or
+                <b>💬 Custom/Owner Response</b> (type a direct message).</li>
+              <li>The chosen reply is <b>sent automatically to the customer</b> on their original channel (WhatsApp / Messenger / Instagram) and the ticket is resolved.</li>
+            </ol>
+            <div style="margin-top:8px; opacity:0.85;">💡 Everything is logged permanently (survives server restarts). Tickets in blue = awaiting you; resolved tickets turn green.</div>
+          </div>
+
+          <div class="escalation-queue" id="escalationQueue">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: META API SETUP GUIDE & WEBHOOK TESTER -->
+      <section id="tab-live-feed" class="tab-pane">
+        <div class="copilot-grid">
+          <div class="panel-card" style="grid-column: 1 / -1;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <div>
+                <h2 style="margin:0;">🔴 Live Inbound / Outbound Feed</h2>
+                <p class="panel-desc" style="margin:4px 0 0;">Real customer messages received via Meta webhook & the agent's auto-replies. Auto-refreshes every 5 seconds.</p>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span id="liveFeedStatus" class="badge" style="background:#25D366; color:#fff;">● Live</span>
+                <button type="button" id="refreshLiveFeedBtn" class="btn btn-outline" style="padding:6px 14px;">🔄 Refresh</button>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+              <button type="button" class="channel-btn active" data-livefilter="all">All Channels</button>
+              <button type="button" class="channel-btn" data-livefilter="WhatsApp">📱 WhatsApp</button>
+              <button type="button" class="channel-btn" data-livefilter="Messenger">💬 Messenger</button>
+              <button type="button" class="channel-btn" data-livefilter="Instagram">📸 Instagram</button>
+            </div>
+
+            <div id="liveFeedEmpty" style="color:var(--text-muted); font-size:0.85rem; padding:20px 0; display:none;">
+              No live messages yet. When a customer messages your WhatsApp / Messenger / Instagram, both their message and the agent's reply will appear here in real time.
+            </div>
+
+            <div id="liveFeedMessages" style="max-height:560px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px;">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-meta-setup" class="tab-pane">
+        <div class="copilot-grid">
+          <!-- LEFT: SETUP GUIDE -->
+          <div class="panel-card">
+            <h2>🔗 Meta WhatsApp, Messenger & Instagram Connection Guide</h2>
+
+            <div class="panel-card" style="background: rgba(37,211,102,0.08); border-color: rgba(37,211,102,0.3); margin-bottom: 16px;">
+              <h3 style="margin:0 0 8px; font-size:14px; color:#25D366;">✅ Current Configuration</h3>
+              <div style="font-size:12.5px; color:#c8cfdd; line-height:1.8;">
+                <div><strong>App Name:</strong> pakcloudrdpapp</div>
+                <div><strong>App ID:</strong> Set in Meta Developer Dashboard</div>
+                <div><strong>API Version:</strong> v20.0</div>
+                <div><strong>Webhook URL:</strong> <code style="background:rgba(37,211,102,0.15); padding:2px 6px; border-radius:4px;">https://agent.codebyjawad.com/api/meta/webhook</code></div>
+                <div><strong>Verify Token:</strong> <code style="background:rgba(37,211,102,0.15); padding:2px 6px; border-radius:4px;">pakcloudrdp_meta_secret_token_2026</code></div>
+                <div><strong>WhatsApp Phone ID:</strong> 1280471305154568</div>
+                <div><strong>WhatsApp Business Account:</strong> 909110308916169</div>
+                <div><strong>Facebook Page ID:</strong> 929661113561523</div>
+                <div><strong>Instagram Account ID:</strong> 17841480018160217</div>
+                <div><strong>Privacy Policy URL:</strong> <code style="background:rgba(37,211,102,0.15); padding:2px 6px; border-radius:4px;">https://agent.codebyjawad.com/privacy</code></div>
+              </div>
+            </div>
+
+            <div class="setup-steps">
+              <div class="step-card">
+                <h4>Step 1: Open Meta for Developers</h4>
+                <p>Go to <a href="https://developers.facebook.com/apps" target="_blank">developers.facebook.com/apps</a> → select app <strong>pakcloudrdpapp</strong> (Type: Business).</p>
+              </div>
+
+              <div class="step-card">
+                <h4>Step 2: Add Products</h4>
+                <p>Left menu → <strong>Products</strong> → add these three:</p>
+                <ul style="margin:6px 0 0; padding-left:18px; font-size:12.5px; color:#c8cfdd; line-height:1.7;">
+                  <li><strong>WhatsApp</strong> → API Setup → copy Phone Number ID (<code>1280471305154568</code>)</li>
+                  <li><strong>Messenger</strong> → Settings → copy Page Access Token and Page ID (<code>929661113561523</code>)</li>
+                  <li><strong>Instagram Graph API</strong> → Settings → copy Instagram Account ID (<code>17841480018160217</code>)</li>
+                </ul>
+              </div>
+
+              <div class="step-card">
+                <h4>Step 3: Configure Webhook</h4>
+                <p>Left menu → <strong>WhatsApp → Configuration → Webhook</strong> (or Messenger → Settings → Webhooks):</p>
+                <div class="config-snippet">
+                  <div><strong>Callback URL:</strong> <code>https://agent.codebyjawad.com/api/meta/webhook</code></div>
+                  <div><strong>Verify Token:</strong> <code>pakcloudrdp_meta_secret_token_2026</code></div>
+                </div>
+                <p>Subscribe to <strong>messages</strong> and <strong>messaging_postbacks</strong> events.</p>
+              </div>
+
+              <div class="step-card">
+                <h4>Step 4: Set App Secret & Tokens in .env</h4>
+                <p>Left menu → <strong>App Settings → Basic</strong> → copy App Secret → set in <code>.env</code> as <code>META_APP_SECRET</code>.</p>
+                <p style="margin-top:6px;">Left menu → <strong>Business Settings → System Users</strong> → generate token with <code>whatsapp_business_messaging</code>, <code>pages_messaging</code>, <code>instagram_basic</code> permissions → set in <code>.env</code> as <code>WHATSAPP_ACCESS_TOKEN</code>, <code>FACEBOOK_PAGE_ACCESS_TOKEN</code>, <code>INSTAGRAM_ACCESS_TOKEN</code>.</p>
+                <p style="margin-top:6px;">Then run <code>pm2 restart agent</code>.</p>
+              </div>
+
+              <div class="step-card">
+                <h4>Step 5: Permissions & App Review</h4>
+                <p>Left menu → <strong>App Review → Permissions and Features</strong>:</p>
+                <ul style="margin:6px 0 0; padding-left:18px; font-size:12.5px; color:#c8cfdd; line-height:1.7;">
+                  <li>Request <strong>Advanced Access</strong> for <code>whatsapp_business_management</code></li>
+                  <li>Request <strong>Advanced Access</strong> for <code>pages_messaging</code></li>
+                  <li>Request <strong>Advanced Access</strong> for <code>instagram_manage_messages</code></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: WEBHOOK TESTER -->
+          <div class="panel-card">
+            <h2>🧪 Meta Webhook Live Payload Tester</h2>
+            <p class="panel-desc">Simulate an actual Meta Webhook request to test agent ingestion:</p>
+
+            <form id="webhookSimulatorForm">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Channel:</label>
+                  <select id="simChannel" class="form-select">
+                    <option value="WhatsApp">WhatsApp Cloud API</option>
+                    <option value="Messenger">Facebook Messenger</option>
+                    <option value="Instagram">Instagram Direct</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Sender Phone / PSID:</label>
+                  <input type="text" id="simSenderPhone" value="923001234567" class="form-input">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Incoming Message Text:</label>
+                <textarea id="simMessageText" class="form-input" rows="3">Salam, mujhe Starter plan EU chahiye. Price aur JazzCash account bata dein.</textarea>
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="simHasImage"> Simulate Payment Screenshot / Image attached
+                </label>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%;">
+                ⚡ Dispatch Test Meta Webhook Event
+              </button>
+            </form>
+
+            <div class="webhook-log-box" style="margin-top: 15px;">
+              <h4>Recent Webhook Activity Logs:</h4>
+              <div class="log-entries" id="webhookLogEntries">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "pakcloudrdp-css-agent",
+  "version": "1.0.0",
+  "description": "PakCloudRDP Customer Support Service (CSS) Agent with Meta WhatsApp, Messenger, and Instagram Integration",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "css-agent",
+    "customer-service",
+    "pakcloudrdp",
+    "meta-whatsapp-api",
+    "messenger-api",
+    "instagram-api"
+  ],
+  "author": "PakCloudRDP",
+  "license": "ISC"
+}

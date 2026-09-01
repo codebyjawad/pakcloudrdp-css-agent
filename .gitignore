@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+debug_*.mjs
+*.log
+*.bak*
