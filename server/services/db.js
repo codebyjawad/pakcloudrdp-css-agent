@@ -108,3 +108,4 @@ function ensureColumn(table, column, ddl) {
 ensureColumn('conversations', 'contactName', 'contactName TEXT NOT NULL DEFAULT \'Customer\'');
 ensureColumn('conversations', 'senderId', 'senderId TEXT NOT NULL DEFAULT \'\'');
 ensureColumn('conversations', 'analysis', 'analysis TEXT');
+ensureColumn('conversations', 'aiPaused', 'aiPaused INTEGER NOT NULL DEFAULT 0');

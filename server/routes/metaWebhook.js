@@ -100,6 +100,32 @@ router.post('/', async (req, res) => {
 
       console.log(`[WhatsApp Inbound] From ${senderName} (${senderPhone}): "${textContent}"`);
 
+      // Check if AI is paused for this chat
+      const isPaused = conversationStore.isAiPaused(senderPhone);
+
+      // Persist the user message first (always, even if paused)
+      conversationStore.push(senderPhone, {
+        sender: 'user',
+        text: textContent,
+        timestamp: new Date().toISOString()
+      }, { channel: 'WhatsApp', contactName: senderName, senderId: senderPhone });
+
+      if (isPaused) {
+        console.log(`[WhatsApp] AI is PAUSED for ${senderPhone}. Message recorded but no AI reply.`);
+        webhookLogStore.add({
+          id: 'WH-PAUSED-' + Date.now(),
+          channel: 'WhatsApp',
+          sender: senderName,
+          senderId: senderPhone,
+          inboundText: textContent,
+          outboundText: '[AI paused — owner to reply manually]',
+          intent: 'paused',
+          escalation: '',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
       // Process via CSS Agent
       const agentResult = await cssAgent.handleMessage(textContent, {
         senderId: senderPhone,
@@ -109,12 +135,7 @@ router.post('/', async (req, res) => {
         hasImageAttachment: hasImage
       });
 
-      // Persist the conversation history FIRST (so messages are never lost)
-      conversationStore.push(senderPhone, {
-        sender: 'user',
-        text: textContent,
-        timestamp: new Date().toISOString()
-      }, { channel: 'WhatsApp', contactName: senderName, senderId: senderPhone });
+      // Persist the AI response
       conversationStore.push(senderPhone, {
         sender: 'agent',
         text: agentResult.replyText,
@@ -284,6 +305,32 @@ router.post('/', async (req, res) => {
         if (realName) senderName = realName;
       } catch {}
 
+      // Check if AI is paused for this chat
+      const isPaused = conversationStore.isAiPaused(senderId);
+
+      // Persist the user message first (always, even if paused)
+      conversationStore.push(senderId, {
+        sender: 'user',
+        text: textContent,
+        timestamp: new Date().toISOString()
+      }, { channel, contactName: senderName, senderId });
+
+      if (isPaused) {
+        console.log(`[${channel}] AI is PAUSED for ${senderId}. Message recorded but no AI reply.`);
+        webhookLogStore.add({
+          id: 'META-PAUSED-' + Date.now(),
+          channel,
+          sender: senderName,
+          senderId,
+          inboundText: textContent,
+          outboundText: '[AI paused — owner to reply manually]',
+          intent: 'paused',
+          escalation: '',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
       // Process via CSS Agent
       const agentResult = await cssAgent.handleMessage(textContent, {
         senderId: senderId,
@@ -292,12 +339,7 @@ router.post('/', async (req, res) => {
         hasImageAttachment: hasImage
       });
 
-      // Persist the conversation history FIRST (so messages are never lost)
-      conversationStore.push(senderId, {
-        sender: 'user',
-        text: textContent,
-        timestamp: new Date().toISOString()
-      }, { channel, contactName: senderName, senderId });
+      // Persist the AI response
       conversationStore.push(senderId, {
         sender: 'agent',
         text: agentResult.replyText,

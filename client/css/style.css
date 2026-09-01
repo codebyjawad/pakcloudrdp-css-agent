@@ -4043,3 +4043,51 @@ body::before {
 }
 .info-notes-input:focus { outline: none; border-color: var(--border-glow, #6366f1); }
 
+/* AI Pause button */
+.ai-pause-btn {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--txt);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.ai-pause-btn:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+.ai-pause-btn.paused { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+.ai-pause-btn.paused:hover { background: var(--accent-green); border-color: var(--accent-green); color: #fff; }
+
+/* AI paused banner */
+.ai-paused-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: rgba(255, 179, 0, 0.1);
+  border: 1px solid rgba(255, 179, 0, 0.25);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--accent-gold);
+  font-weight: 600;
+}
+.ai-paused-banner .apb-sub {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* AI paused badge in thread list */
+.ai-paused-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 179, 0, 0.15);
+  color: var(--accent-gold);
+  font-weight: 600;
+  white-space: nowrap;
+}
+

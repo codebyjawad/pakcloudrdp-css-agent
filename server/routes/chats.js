@@ -38,9 +38,10 @@ router.get('/:id', (req, res) => {
   const sessionId = req.params.id;
   const history = conversationStore.get(sessionId);
   const meta = conversationStore.getMeta(sessionId);
+  const aiPaused = conversationStore.isAiPaused(sessionId);
   const active = escalationEngine.getActiveByCustomer(sessionId)
     .concat(meta.senderId && meta.senderId !== sessionId ? escalationEngine.getActiveByCustomer(meta.senderId) : []);
-  res.json({ chat: { sessionId, ...meta, history, escalations: active } });
+  res.json({ chat: { sessionId, ...meta, aiPaused, history, escalations: active } });
 });
 
 // AI "profit coach": analyze the FULL chat and recommend the best NEXT message
@@ -145,6 +146,24 @@ router.post('/:id/correct', async (req, res) => {
 router.delete('/:id', (req, res) => {
   const ok = conversationStore.clear(req.params.id);
   res.json({ success: ok });
+});
+
+/**
+ * Toggle AI auto-response for a chat. When paused, incoming messages are
+ * still recorded but the AI does NOT reply — the owner handles manually.
+ */
+router.post('/:id/ai-pause', (req, res) => {
+  const sessionId = req.params.id;
+  const { paused } = req.body;
+  const newState = conversationStore.setAiPaused(sessionId, Boolean(paused));
+  res.json({ success: true, aiPaused: newState });
+});
+
+// Get AI pause state for a chat
+router.get('/:id/ai-pause', (req, res) => {
+  const sessionId = req.params.id;
+  const aiPaused = conversationStore.isAiPaused(sessionId);
+  res.json({ aiPaused });
 });
 
 export default router;

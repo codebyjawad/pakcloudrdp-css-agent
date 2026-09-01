@@ -1607,6 +1607,7 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
       const escBadge = esc
         ? `<span class="chat-esc-badge esc-${(esc.priority||'').toLowerCase()}">🚨 ${escapeHtml((esc.type||'ESCALATION').replace(/_/g,' '))}</span>`
         : '';
+      const aiPausedBadge = c.aiPaused ? '<span class="ai-paused-badge" title="AI paused">⏸️ AI Off</span>' : '';
       const displayName = c.contactName || 'Customer';
       const unread = (c.lastSender === 'user' && c.sessionId !== activeChatId) ? `<span class="thread-unread-badge">!</span>` : '';
       const needsAtt = (c.lastSender === 'user');
@@ -1624,6 +1625,7 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
             <div class="thread-preview">${escapeHtml(String(c.lastMessage || '').slice(0, 70))} ${lastAwaiting}</div>
             <div class="thread-subrow">
               <span class="thread-channel ${chCls}">${ch === 'WhatsApp' ? '📱 WA' : ch === 'Messenger' ? '💬 MSG' : '📸 IG'}</span>
+              ${aiPausedBadge}
               <span class="thread-count">${escapeHtml(countInfo)}</span>
               ${escBadge}
             </div>
@@ -1768,13 +1770,24 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
 
     chatThreadHeader.innerHTML = `
       <div class="thread-avatar ${chatChannelClass(ch)}">${icon}</div>
-      <div>
+      <div style="flex:1; min-width:0;">
         <div class="th-name">${escapeHtml(chat.contactName || 'Customer')}</div>
         <div class="th-sub">${escapeHtml(ch)} · ${escapeHtml(chat.senderId || chat.sessionId)}</div>
       </div>
-      ${esc ? `<span class="thread-esc-flag esc-${(esc.priority||'').toLowerCase()}">🚨 ACTIVE</span>` : ''}
+      ${esc ? `<span class="thread-esc-flag esc-${(esc.priority||'').toLowerCase()}">🚨 ESCALATED</span>` : ''}
+      <button class="ai-pause-btn ${chat.aiPaused ? 'paused' : ''}" id="aiPauseBtn" title="${chat.aiPaused ? 'Resume AI auto-reply' : 'Pause AI (owner replies manually)'}">
+        ${chat.aiPaused ? '▶️ Resume AI' : '⏸️ Pause AI'}
+      </button>
     `;
-    chatThreadMessages.innerHTML = (escBanner ? escBanner + '<div class="thread-esc-divider"></div>' : '') + chat.history.map(m => renderThreadMessage(m)).join('');
+
+    // AI paused banner
+    const pausedBanner = chat.aiPaused ? `
+      <div class="ai-paused-banner">
+        <span>⏸️ AI is paused for this chat</span>
+        <span class="apb-sub">Incoming messages are recorded but AI will not reply. You handle this conversation manually.</span>
+      </div>` : '';
+
+    chatThreadMessages.innerHTML = (pausedBanner ? pausedBanner + '<div class="thread-esc-divider"></div>' : '') + (escBanner ? escBanner + '<div class="thread-esc-divider"></div>' : '') + chat.history.map(m => renderThreadMessage(m)).join('');
     chatThreadMessages.scrollTop = chatThreadMessages.scrollHeight;
 
     chatThreadInputWrap.innerHTML = `
@@ -1801,6 +1814,26 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
     if (reanalyzeBtn) {
       reanalyzeBtn.onclick = null;
       reanalyzeBtn.addEventListener('click', () => loadSuggestions(chat.sessionId, input, true));
+    }
+
+    // AI Pause/Resume button
+    const aiPauseBtn = document.getElementById('aiPauseBtn');
+    if (aiPauseBtn) {
+      aiPauseBtn.addEventListener('click', async () => {
+        const newPaused = !chat.aiPaused;
+        try {
+          await fetch(`/api/chats/${encodeURIComponent(chat.sessionId)}/ai-pause`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paused: newPaused })
+          });
+          chat.aiPaused = newPaused;
+          renderThread(chat);
+          loadChats();
+        } catch (err) {
+          console.error('Failed to toggle AI pause:', err);
+        }
+      });
     }
 
     const escOpenBtn = chatThreadMessages.querySelector('#escOpenBtn');

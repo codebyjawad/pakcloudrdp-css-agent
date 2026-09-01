@@ -22,6 +22,10 @@ const UPDATE_META = db.prepare(
 const UPDATE_ANALYSIS = db.prepare(
   'UPDATE conversations SET analysis=@analysis, updatedAt=updatedAt WHERE sessionId=@sessionId'
 );
+const UPDATE_AI_PAUSED = db.prepare(
+  'UPDATE conversations SET aiPaused=@aiPaused WHERE sessionId=@sessionId'
+);
+const GET_AI_PAUSED = db.prepare('SELECT aiPaused FROM conversations WHERE sessionId = ?');
 
 export const conversationStore = {
   get(sessionId) {
@@ -53,6 +57,7 @@ export const conversationStore = {
         channel: r.channel || 'WhatsApp',
         contactName: r.contactName || 'Customer',
         senderId: r.senderId || r.sessionId,
+        aiPaused: Boolean(r.aiPaused),
         messageCount: history.length,
         customerCount,
         aiCount,
@@ -95,6 +100,18 @@ export const conversationStore = {
   /** Persist the analysis object for this chat. */
   setAnalysis(sessionId, analysis) {
     UPDATE_ANALYSIS.run({ sessionId, analysis: JSON.stringify(analysis) });
+  },
+
+  /** Check if AI is paused for this chat. */
+  isAiPaused(sessionId) {
+    const row = GET_AI_PAUSED.get(sessionId);
+    return row ? Boolean(row.aiPaused) : false;
+  },
+
+  /** Toggle or set AI pause state for this chat. Returns new state. */
+  setAiPaused(sessionId, paused) {
+    UPDATE_AI_PAUSED.run({ sessionId, aiPaused: paused ? 1 : 0 });
+    return Boolean(paused);
   },
 
   /**
