@@ -1535,6 +1535,9 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
   let allChats = [];
   let inboxFilterChannel = 'all';
   let inboxFilterStatus = 'all';
+  let inboxSearchQuery = '';
+  let inboxDateFrom = null;
+  let inboxDateTo = null;
   const chatThreadItems = document.getElementById('chatThreadItems');
   const chatFilterCount = document.getElementById('chatFilterCount');
 
@@ -1550,7 +1553,28 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
       let stOk = true;
       if (inboxFilterStatus === 'needs') stOk = c.lastSender === 'user';
       else if (inboxFilterStatus === 'ai') stOk = c.lastSender === 'agent' || c.lastSender === 'owner' || c.lastSender === 'owner_escalation';
-      return chOk && stOk;
+
+      let searchOk = true;
+      if (inboxSearchQuery) {
+        const q = inboxSearchQuery.toLowerCase();
+        const name = (c.contactName || '').toLowerCase();
+        const msg = (c.lastMessage || '').toLowerCase();
+        const sid = (c.sessionId || '').toLowerCase();
+        searchOk = name.includes(q) || msg.includes(q) || sid.includes(q);
+      }
+
+      let dateOk = true;
+      if (inboxDateFrom || inboxDateTo) {
+        const t = c.lastTime ? new Date(c.lastTime).getTime() : 0;
+        if (inboxDateFrom && t < inboxDateFrom.getTime()) dateOk = false;
+        if (inboxDateTo) {
+          const endOfDay = new Date(inboxDateTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (t > endOfDay.getTime()) dateOk = false;
+        }
+      }
+
+      return chOk && stOk && searchOk && dateOk;
     });
   }
 
@@ -1561,6 +1585,8 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
 
     const totalNeeds = chats.filter(c => c.lastSender === 'user').length;
     if (chatInboxBadge) chatInboxBadge.textContent = String(totalNeeds);
+    const statsEl = document.getElementById('chatInboxStats');
+    if (statsEl) statsEl.textContent = `${chats.length} conversation${chats.length !== 1 ? 's' : ''}${totalNeeds > 0 ? ` · ${totalNeeds} need attention` : ''}`;
 
     if (filtered.length === 0) {
       chatThreadItems.innerHTML = '';
@@ -1581,21 +1607,23 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
       const escBadge = esc
         ? `<span class="chat-esc-badge esc-${(esc.priority||'').toLowerCase()}">🚨 ${escapeHtml((esc.type||'ESCALATION').replace(/_/g,' '))}</span>`
         : '';
-
-      // Show contact name as stored (backend fetches real names from Meta Graph API)
       const displayName = c.contactName || 'Customer';
+      const unread = (c.lastSender === 'user' && c.sessionId !== activeChatId) ? `<span class="thread-unread-badge">!</span>` : '';
+      const needsAtt = (c.lastSender === 'user');
 
       return `
-        <div class="thread-item ${c.sessionId === activeChatId ? 'active' : ''}" data-session="${escapeHtml(c.sessionId)}" title="${escapeHtml(countInfo)}">
-          <div class="thread-avatar ${chatChannelClass(ch)}">${icon}</div>
+        <div class="thread-item ${c.sessionId === activeChatId ? 'active' : ''} ${needsAtt ? 'thread-needs-attention' : ''}" data-session="${escapeHtml(c.sessionId)}" title="${escapeHtml(countInfo)}">
+          <div class="thread-avatar-wrap">
+            <div class="thread-avatar ${chatChannelClass(ch)}">${icon}</div>
+          </div>
           <div class="thread-body">
             <div class="thread-row1">
-              <span class="thread-name">${escapeHtml(displayName)}</span>
-              <span class="thread-channel ${chCls}">${ch === 'WhatsApp' ? '📱 WA' : ch === 'Messenger' ? '💬 MSG' : '📸 IG'}</span>
+              <span class="thread-name">${escapeHtml(displayName)} ${unread}</span>
               <span class="thread-time">${formatElapsed(c.lastTime)}</span>
             </div>
             <div class="thread-preview">${escapeHtml(String(c.lastMessage || '').slice(0, 70))} ${lastAwaiting}</div>
             <div class="thread-subrow">
+              <span class="thread-channel ${chCls}">${ch === 'WhatsApp' ? '📱 WA' : ch === 'Messenger' ? '💬 MSG' : '📸 IG'}</span>
               <span class="thread-count">${escapeHtml(countInfo)}</span>
               ${escBadge}
             </div>
@@ -1630,6 +1658,37 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
         inboxFilterStatus = b.getAttribute('data-ist');
         renderChatThreadList(allChats);
       });
+    });
+
+    // Search
+    const searchInput = document.getElementById('chatSearchInput');
+    const searchClear = document.getElementById('chatSearchClear');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        inboxSearchQuery = searchInput.value.trim();
+        if (searchClear) searchClear.style.display = inboxSearchQuery ? 'block' : 'none';
+        renderChatThreadList(allChats);
+      });
+    }
+    if (searchClear) {
+      searchClear.addEventListener('click', () => {
+        inboxSearchQuery = '';
+        searchInput.value = '';
+        searchClear.style.display = 'none';
+        renderChatThreadList(allChats);
+      });
+    }
+
+    // Date filters
+    const dateFrom = document.getElementById('chatDateFrom');
+    const dateTo = document.getElementById('chatDateTo');
+    if (dateFrom) dateFrom.addEventListener('change', () => {
+      inboxDateFrom = dateFrom.value ? new Date(dateFrom.value) : null;
+      renderChatThreadList(allChats);
+    });
+    if (dateTo) dateTo.addEventListener('change', () => {
+      inboxDateTo = dateTo.value ? new Date(dateTo.value) : null;
+      renderChatThreadList(allChats);
     });
   }
 
@@ -1747,6 +1806,120 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
         }
       });
     });
+
+    // Quick reply chips
+    const QUICK_REPLIES = {
+      greeting: 'Wa Alaikum Assalam! 🚀 Welcome to PakCloudRDP. How can I help you today?',
+      pricing: 'Here are our plans:\n\n💰 *Little EU*: ₨1,500/mo (1 vCPU, 3GB RAM)\n⭐ *Starter EU*: ₨2,800/mo (4 vCPU, 8GB RAM) — Most Popular\n🚀 *Standard EU*: ₨3,800/mo (6 vCPU, 12GB RAM)\n💪 *Plus EU*: ₨7,000/mo (8 vCPU, 24GB RAM)\n\nAll plans include 100% Dedicated Machine + Private IP + 1 Gbps Uplink.',
+      delivery: '🚀 Delivery SLA: Within 30 minutes of payment verification (during working hours 9 AM – 12 AM PKT).\n\nAfter 12 AM, orders are queued for morning delivery.',
+      payment: '💳 *Payment Accounts:*\n\n📱 JazzCash / Raast / NayaPay: `03014149031`\nAccount: Muhammad Jawad Iqbal Khan\n\n🏦 UBL Bank:\nA/C: `300841314`\nIBAN: `PK77UNIL0109000300841314`\n\n⚠️ Please share screenshot after payment!',
+      trial: 'Dedicated IPs aur server costs ki waja se free trial available nahi hota, lekin payment confirm hotay hi 30 minutes mein fast delivery ho jati hai! 🚀',
+      escalate: '🚨 This conversation needs owner attention. Let me escalate this for you.',
+      thankyou: 'Shukriya! 🙏 Agar koi aur sawal ho toh zaroor poochein. Have a great day!',
+      followup: 'Hello! Just checking in — is everything working well with your RDP? 🖥️ Let us know if you need any help.'
+    };
+
+    document.querySelectorAll('.qr-chip').forEach(chip => {
+      chip.onclick = () => {
+        const key = chip.getAttribute('data-qr');
+        const msg = QUICK_REPLIES[key];
+        if (msg && input) {
+          input.value = msg;
+          input.focus();
+          input.style.height = 'auto';
+          input.style.height = input.scrollHeight + 'px';
+        }
+      };
+    });
+
+    // Message action listeners (reactions, reply, edit, delete)
+    chatThreadMessages.querySelectorAll('[data-react]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = prompt('React with an emoji:', '👍');
+        if (emoji && emoji.trim()) {
+          const msgBubble = btn.closest('.msg-bubble');
+          let reactionsDiv = msgBubble.querySelector('.msg-reactions');
+          if (!reactionsDiv) {
+            reactionsDiv = document.createElement('div');
+            reactionsDiv.className = 'msg-reactions';
+            msgBubble.querySelector('.ib-text').after(reactionsDiv);
+          }
+          reactionsDiv.innerHTML += `<span class="msg-reaction">${emoji.trim()} <span class="r-count">1</span></span>`;
+        }
+      });
+    });
+
+    chatThreadMessages.querySelectorAll('[data-reply]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const msgId = btn.getAttribute('data-reply');
+        const bubble = btn.closest('.msg-bubble');
+        const text = bubble.querySelector('.ib-text')?.textContent || '';
+        if (input) {
+          input.value = '';
+          input.focus();
+          const replyQuote = document.createElement('div');
+          replyQuote.className = 'msg-reply-quote';
+          replyQuote.innerHTML = `<span class="rq-sender">Replying to:</span> ${text.slice(0, 80)}${text.length > 80 ? '...' : ''}`;
+          const existingQuote = chatThreadInputWrap.querySelector('.msg-reply-quote');
+          if (existingQuote) existingQuote.remove();
+          chatThreadInputWrap.querySelector('.iti-row').before(replyQuote);
+        }
+      });
+    });
+
+    chatThreadMessages.querySelectorAll('[data-delmsg]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm('Delete this message from view?')) {
+          const bubble = btn.closest('.msg-bubble');
+          if (bubble) {
+            bubble.style.opacity = '0.4';
+            bubble.style.textDecoration = 'line-through';
+          }
+        }
+      });
+    });
+
+    // Customer info panel
+    const infoPane = document.getElementById('infoPaneContent');
+    const infoPaneEmpty = document.getElementById('infoPaneEmpty');
+    const infoHeader = document.getElementById('infoPaneHeader');
+    const infoOrders = document.getElementById('infoOrderHistory');
+    const infoEsc = document.getElementById('infoEscalations');
+    const infoNotes = document.getElementById('infoNotes');
+    if (infoPane && infoPaneEmpty) {
+      infoPaneEmpty.style.display = 'none';
+      infoPane.style.display = 'block';
+      const themeCls = chatChannelClass(ch);
+      const bgGrad = ch === 'WhatsApp' ? 'linear-gradient(135deg,#25D366,#128C7E)' : ch === 'Messenger' ? 'linear-gradient(135deg,#0084FF,#0069D9)' : 'linear-gradient(135deg,#E1306C,#405DE6)';
+      if (infoHeader) infoHeader.innerHTML = `
+        <div class="iph-avatar" style="background:${bgGrad};">${icon}</div>
+        <div>
+          <div class="iph-name">${escapeHtml(chat.contactName || 'Customer')}</div>
+          <div class="iph-id">${escapeHtml(ch)} · ${escapeHtml(chat.senderId || chat.sessionId)}</div>
+        </div>`;
+      if (infoOrders) {
+        const msgCount = (chat.history || []).length;
+        const custMsgs = (chat.history || []).filter(m => m.sender === 'user').length;
+        const aiMsgs = (chat.history || []).filter(m => m.sender === 'agent').length;
+        infoOrders.innerHTML = `
+          <div class="ipl-item"><span class="ipl-label">Messages:</span> ${msgCount} total</div>
+          <div class="ipl-item"><span class="ipl-label">Customer:</span> ${custMsgs} · <span class="ipl-label">AI:</span> ${aiMsgs}</div>
+          <div class="ipl-item"><span class="ipl-label">Channel:</span> ${escapeHtml(ch)}</div>
+          <div class="ipl-item"><span class="ipl-label">Session:</span> <span class="ipl-sub">${escapeHtml(chat.sessionId || '')}</span></div>`;
+      }
+      if (infoEsc) {
+        const escalations = chat.escalations || [];
+        if (escalations.length === 0) {
+          infoEsc.innerHTML = '<span style="color:#6b7280;">No escalations</span>';
+        } else {
+          infoEsc.innerHTML = escalations.map(e => `
+            <div class="ipl-item">
+              <span class="ipl-label">🚨 ${escapeHtml((e.type || '').replace(/_/g, ' '))}</span>
+              <div class="ipl-sub">${escapeHtml(e.reason || '')} · ${escapeHtml(e.priority || '')}</div>
+            </div>`).join('');
+        }
+      }
+    }
   }
 
   function renderThreadMessage(m) {
@@ -1757,9 +1930,9 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
     let icon = '👤';
     if (m.sender === 'agent') {
       cls = 'ib-agent';
-      label = '🤖 PakCloudRDP AI Agent';
+      label = '🤖 AI Agent';
       icon = '🤖';
-      actions = `<div class="ib-actions"><button class="correct" data-correct="${escapeHtml(m.id || '')}">✏️ Correct AI reply</button></div>`;
+      actions = `<div class="ib-actions"><button class="correct" data-correct="${escapeHtml(m.id || '')}">✏️ Correct</button></div>`;
     } else if (m.sender === 'owner') {
       cls = 'ib-owner';
       label = '👑 Owner';
@@ -1770,7 +1943,15 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
       icon = '🚨';
     }
     const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now';
-    return `<div class="ib ${cls}"><div class="ib-header"><span class="ib-sender">${label}</span><span class="ib-time">${time}</span></div><div class="ib-text">${text}</div>${actions}</div>`;
+    const msgId = escapeHtml(m.id || '');
+    const actionBtns = `
+      <div class="msg-actions">
+        <button class="msg-action-btn react-btn" data-react="${msgId}" title="React">👍</button>
+        <button class="msg-action-btn reply-btn" data-reply="${msgId}" title="Reply">↩️</button>
+        ${m.sender === 'owner' || m.sender === 'agent' ? `<button class="msg-action-btn edit-btn" data-editmsg="${msgId}" title="Edit">✏️</button>` : ''}
+        <button class="msg-action-btn delete-btn" data-delmsg="${msgId}" title="Delete">🗑️</button>
+      </div>`;
+    return `<div class="ib msg-bubble ${cls}" data-msgid="${msgId}"><div class="ib-header"><span class="ib-sender">${label}</span><span class="ib-time">${time}</span></div><div class="ib-text">${text}</div>${actions}${actionBtns}</div>`;
   }
 
   // Guard: formatWhatsAppText renders *bold* etc; make sure text is escaped first.

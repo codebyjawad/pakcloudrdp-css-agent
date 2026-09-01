@@ -90,10 +90,19 @@
       <!-- TAB: PER-USER CHAT INBOX -->
       <section id="tab-chats" class="tab-pane active">
         <div class="panel-card" style="padding:0; overflow:hidden;">
-          <div style="padding:14px 18px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <h2 style="margin:0; font-size:18px;">📥 Customer Chats</h2>
-            <span class="muted-sm" id="chatInboxHint">AI answers first · you can reply or correct</span>
-            <button class="btn btn-ghost btn-sm ms-auto" id="chatRefreshBtn">↻ Refresh</button>
+          <div class="chat-inbox-header">
+            <div class="chat-inbox-header-left">
+              <h2>📥 Customer Chats</h2>
+              <span class="chat-inbox-stats" id="chatInboxStats">0 conversations</span>
+            </div>
+            <div class="chat-inbox-header-right">
+              <div class="chat-search-box">
+                <span class="chat-search-icon">🔍</span>
+                <input type="text" id="chatSearchInput" placeholder="Search messages, names..." class="chat-search-input">
+                <button class="chat-search-clear" id="chatSearchClear" style="display:none;">✕</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="chatRefreshBtn">↻ Refresh</button>
+            </div>
           </div>
 
           <div id="metaSyncPanel" style="padding:10px 16px; border-bottom:1px solid var(--border,#262b3d); display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:rgba(245,158,11,0.06);">
@@ -131,6 +140,11 @@
                   <button type="button" class="if-btn" data-ist="needs">⏳ Needs attention</button>
                   <button type="button" class="if-btn" data-ist="ai">🤖 AI handled</button>
                 </div>
+                <div class="inbox-filter-group" id="inboxFilterDate">
+                  <input type="date" id="chatDateFrom" class="if-date" placeholder="From">
+                  <span class="if-date-sep">–</span>
+                  <input type="date" id="chatDateTo" class="if-date" placeholder="To">
+                </div>
               </div>
               <div class="inbox-filter-count" id="chatFilterCount"></div>
               <div class="inbox-thread-items" id="chatThreadItems">
@@ -146,9 +160,45 @@
               <div id="chatThreadContent" style="display:none; height:100%; flex-direction:column;">
                 <div class="inbox-thread-header" id="chatThreadHeader"></div>
                 <div class="inbox-thread-messages" id="chatThreadMessages"></div>
+                <!-- Quick Reply Bar -->
+                <div class="quick-reply-bar" id="quickReplyBar">
+                  <div class="qr-scroll" id="quickReplyChips">
+                    <button class="qr-chip" data-qr="greeting">👋 Greeting</button>
+                    <button class="qr-chip" data-qr="pricing">💰 Pricing Info</button>
+                    <button class="qr-chip" data-qr="delivery">🚀 Delivery</button>
+                    <button class="qr-chip" data-qr="payment">💳 Payment Details</button>
+                    <button class="qr-chip" data-qr="trial">🧪 Trial Offer</button>
+                    <button class="qr-chip" data-qr="escalate">🚨 Escalate</button>
+                    <button class="qr-chip" data-qr="thankyou">🙏 Thank You</button>
+                    <button class="qr-chip" data-qr="followup">📞 Follow Up</button>
+                  </div>
+                </div>
                 <div class="inbox-thread-input" id="chatThreadInputWrap"></div>
               </div>
             </div>
+            <!-- Customer Info Panel -->
+            <aside class="inbox-info-pane" id="chatInfoPane">
+              <div class="info-pane-empty" id="infoPaneEmpty">
+                <div style="font-size:28px; margin-bottom:6px;">👤</div>
+                Select a chat to view customer details
+              </div>
+              <div id="infoPaneContent" style="display:none;">
+                <div class="info-pane-header" id="infoPaneHeader"></div>
+                <div class="info-pane-section">
+                  <h4>📋 Order History</h4>
+                  <div id="infoOrderHistory" class="info-pane-list">No orders yet</div>
+                </div>
+                <div class="info-pane-section">
+                  <h4>🚨 Past Escalations</h4>
+                  <div id="infoEscalations" class="info-pane-list">None</div>
+                </div>
+                <div class="info-pane-section">
+                  <h4>📝 Notes</h4>
+                  <textarea id="infoNotes" class="info-notes-input" placeholder="Add a note about this customer..."></textarea>
+                  <button class="btn btn-ghost btn-sm" id="saveNoteBtn" style="margin-top:6px;">Save Note</button>
+                </div>
+              </div>
+            </aside>
             <aside class="inbox-coach-pane" id="chatCoachPane">
               <div class="icp-head">
                 <span class="icp-title">💡 AI Profit Coach</span>
