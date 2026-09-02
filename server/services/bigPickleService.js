@@ -24,7 +24,7 @@ function loadConfig() {
   }
 }
 
-const FREE_MODELS = ['deepseek-v4-flash-free', 'mimo-v2.5-free', 'nemotron-3-ultra-free', 'laguna-s-2.1-free'];
+const FREE_MODELS = ['mimo-v2.5-free', 'deepseek-v4-flash-free', 'laguna-s-2.1-free'];
 
 const SYS_PROMPT =
   'You are the sales manager for PakCloudRDP, a managed dedicated Windows RDP provider. ' +
@@ -83,12 +83,13 @@ export class BigPickleService {
     for (const model of FREE_MODELS) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 12000);
+        const timer = setTimeout(() => controller.abort(), 30000);
         const res = await fetch(this.baseUrl + '/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + this.apiKey
+            'Authorization': 'Bearer ' + this.apiKey,
+            'User-Agent': 'PakCloudRDP-Agent/1.0'
           },
           signal: controller.signal,
           body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 700 })
