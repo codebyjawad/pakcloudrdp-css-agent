@@ -109,3 +109,4 @@ ensureColumn('conversations', 'contactName', 'contactName TEXT NOT NULL DEFAULT 
 ensureColumn('conversations', 'senderId', 'senderId TEXT NOT NULL DEFAULT \'\'');
 ensureColumn('conversations', 'analysis', 'analysis TEXT');
 ensureColumn('conversations', 'aiPaused', 'aiPaused INTEGER NOT NULL DEFAULT 0');
+ensureColumn('webhook_logs', 'delivered', 'delivered INTEGER NOT NULL DEFAULT 0');

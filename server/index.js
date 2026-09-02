@@ -64,8 +64,8 @@ app.get('/api/health', (req, res) => {
       ? 'Configured' : 'Not configured / placeholder',
     messenger: (!isPlaceholder(m.pageId) && !isPlaceholder(m.pageAccessToken))
       ? 'Configured' : 'Not configured / placeholder',
-    instagram: (!isPlaceholder(i.instagramAccountId) && !isPlaceholder(i.accessToken))
-      ? 'Configured' : 'Not configured / placeholder'
+    instagram: (!isPlaceholder(m.pageId) && !isPlaceholder(m.pageAccessToken))
+      ? 'Configured (via Facebook Page token)' : 'Not configured / placeholder',
   };
 
   res.json({

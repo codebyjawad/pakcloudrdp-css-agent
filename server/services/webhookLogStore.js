@@ -7,10 +7,10 @@ import { db } from './db.js';
 const INSERT = db.prepare(`
   INSERT INTO webhook_logs (
     id, channel, sender, senderId, inboundText, outboundText,
-    intent, escalation, simulated, timestamp
+    intent, escalation, simulated, delivered, timestamp
   ) VALUES (
     @id, @channel, @sender, @senderId, @inboundText, @outboundText,
-    @intent, @escalation, @simulated, @timestamp
+    @intent, @escalation, @simulated, @delivered, @timestamp
   )
 `);
 
@@ -29,6 +29,7 @@ export const webhookLogStore = {
       intent: entry.intent || '',
       escalation: entry.escalation || '',
       simulated: entry.simulated ? 1 : 0,
+      delivered: entry.delivered ? 1 : 0,
       timestamp: entry.timestamp || new Date().toISOString()
     });
 

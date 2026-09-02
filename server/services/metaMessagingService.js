@@ -74,18 +74,18 @@ export class MetaMessagingService {
       );
       const data = await res.json();
       const page = (data.data || []).find((p) => String(p.id) === String(pageId));
-      const token = page?.access_token || null;
-      if (!token) {
-        console.warn('[Meta] Could not obtain a page access token for page', pageId);
-        return null;
+      if (page?.access_token) {
+        this._pageTokenCache = page.access_token;
+        console.log('[Meta] Page token obtained via /me/accounts exchange for page', pageId);
+        return this._pageTokenCache;
       }
-      this._pageTokenCache = token;
-      console.log('[Meta] Page access token obtained for page', pageId);
-      return token;
+      console.warn('[Meta] /me/accounts did not list this page — treating FACEBOOK_PAGE_ACCESS_TOKEN as an already page-scoped token.');
     } catch (err) {
-      console.error('[Meta] Error fetching page access token:', err.message);
-      return null;
+      console.warn('[Meta] /me/accounts exchange failed, falling back to configured token directly:', err.message);
     }
+    // Fallback: assume the configured token is already the page token.
+    this._pageTokenCache = pageAccessToken;
+    return this._pageTokenCache;
   }
 
   /**
@@ -144,6 +144,9 @@ export class MetaMessagingService {
 
       const data = await response.json();
       if (!response.ok) {
+        if (data.error?.code === 190 || data.error?.type === 'OAuthException') {
+          this._pageTokenCache = null;
+        }
         throw new Error(data.error?.message || 'Meta Messenger API error');
       }
 
@@ -181,6 +184,9 @@ export class MetaMessagingService {
 
       const data = await response.json();
       if (!response.ok) {
+        if (data.error?.code === 190 || data.error?.type === 'OAuthException') {
+          this._pageTokenCache = null;
+        }
         throw new Error(data.error?.message || 'Meta Instagram API error');
       }
 
@@ -215,6 +221,9 @@ export class MetaMessagingService {
 
       const data = await response.json();
       if (!response.ok) {
+        if (data.error?.code === 190 || data.error?.type === 'OAuthException') {
+          this._pageTokenCache = null;
+        }
         throw new Error(data.error?.message || 'Instagram comment reply API error');
       }
 
