@@ -379,7 +379,7 @@ router.post('/', async (req, res) => {
           webhookActivityLogs.unshift(logEntry);
         }
       }
-      else {
+      else if (!entry.changes) {
         console.log(`[Meta Webhook] UNMATCHED event: object=${body.object} entry_keys=${Object.keys(entry)} messaging=${Boolean(entry.messaging)} changes=${JSON.stringify(entry.changes?.[0]?.field)}`);
       }
     }
