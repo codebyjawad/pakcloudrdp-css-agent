@@ -1968,6 +1968,35 @@ Dear *${ord.customer.split(' ')[0] || 'Valued Customer'}*, your 100% dedicated W
             </div>`).join('');
         }
       }
+
+      // Load saved note into the notes textarea
+      const notesEl = document.getElementById('infoNotes');
+      if (notesEl) notesEl.value = chat.notes || '';
+
+      // Save note button
+      const saveNoteBtn = document.getElementById('saveNoteBtn');
+      if (saveNoteBtn) {
+        saveNoteBtn.onclick = async () => {
+          const value = notesEl ? notesEl.value : '';
+          const original = saveNoteBtn.textContent;
+          saveNoteBtn.textContent = 'Saving…';
+          saveNoteBtn.disabled = true;
+          try {
+            const res = await fetch('/api/chats/' + encodeURIComponent(chat.sessionId || chat.senderId || '') + '/notes', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ notes: value })
+            });
+            const data = await res.json();
+            saveNoteBtn.textContent = data.success ? '✓ Saved' : '✗ Failed';
+          } catch (err) {
+            console.error('Error saving note:', err);
+            saveNoteBtn.textContent = '✗ Failed';
+          } finally {
+            setTimeout(() => { saveNoteBtn.textContent = original; saveNoteBtn.disabled = false; }, 1500);
+          }
+        };
+      }
     }
   }
 

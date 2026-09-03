@@ -25,6 +25,10 @@ const UPDATE_ANALYSIS = db.prepare(
 const UPDATE_AI_PAUSED = db.prepare(
   'UPDATE conversations SET aiPaused=@aiPaused WHERE sessionId=@sessionId'
 );
+const UPDATE_NOTES = db.prepare(
+  'UPDATE conversations SET notes=@notes WHERE sessionId=@sessionId'
+);
+const GET_NOTES = db.prepare('SELECT notes FROM conversations WHERE sessionId = ?');
 const GET_AI_PAUSED = db.prepare('SELECT aiPaused FROM conversations WHERE sessionId = ?');
 
 export const conversationStore = {
@@ -58,6 +62,7 @@ export const conversationStore = {
         contactName: r.contactName || 'Customer',
         senderId: r.senderId || r.sessionId,
         aiPaused: Boolean(r.aiPaused),
+        notes: r.notes || '',
         messageCount: history.length,
         customerCount,
         aiCount,
@@ -70,11 +75,12 @@ export const conversationStore = {
 
   getMeta(sessionId) {
     const row = GET.get(sessionId);
-    if (!row) return { contactName: 'Customer', senderId: '' };
+    if (!row) return { contactName: 'Customer', senderId: '', notes: '' };
     return {
       contactName: row.contactName || 'Customer',
       senderId: row.senderId || '',
-      channel: row.channel || 'WhatsApp'
+      channel: row.channel || 'WhatsApp',
+      notes: row.notes || ''
     };
   },
 
@@ -112,6 +118,18 @@ export const conversationStore = {
   setAiPaused(sessionId, paused) {
     UPDATE_AI_PAUSED.run({ sessionId, aiPaused: paused ? 1 : 0 });
     return Boolean(paused);
+  },
+
+  /** Get the owner note for a chat (empty string if none). */
+  getNotes(sessionId) {
+    const row = GET_NOTES.get(sessionId);
+    return row ? (row.notes || '') : '';
+  },
+
+  /** Persist the owner note for a chat. Returns the new note text. */
+  setNotes(sessionId, notes) {
+    UPDATE_NOTES.run({ sessionId, notes: notes || '' });
+    return notes || '';
   },
 
   /**

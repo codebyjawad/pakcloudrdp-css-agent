@@ -166,4 +166,18 @@ router.get('/:id/ai-pause', (req, res) => {
   res.json({ aiPaused });
 });
 
+// Get the owner note for a chat
+router.get('/:id/notes', (req, res) => {
+  const sessionId = req.params.id;
+  res.json({ sessionId, notes: conversationStore.getNotes(sessionId) });
+});
+
+// Save the owner note for a chat
+router.put('/:id/notes', (req, res) => {
+  const sessionId = req.params.id;
+  const { notes } = req.body || {};
+  const saved = conversationStore.setNotes(sessionId, String(notes == null ? '' : notes));
+  res.json({ success: true, sessionId, notes: saved });
+});
+
 export default router;

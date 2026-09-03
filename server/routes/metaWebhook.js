@@ -4,15 +4,24 @@
 import express from 'express';
 import { META_CONFIG } from '../config/metaConfig.js';
 import { cssAgent } from '../agents/cssAgent.js';
-import { MetaMessagingService } from '../services/metaMessagingService.js';
 import { webhookLogStore } from '../services/webhookLogStore.js';
 import { conversationStore } from '../services/conversationStore.js';
 import { verifyWebhookSignature, isDuplicateEvent } from '../services/webhookSecurity.js';
+import { enqueue } from '../services/messageQueue.js';
 
 const router = express.Router();
 
 // Keep a small in-memory mirror for immediate dashboard reads; source of truth is SQLite.
 export const webhookActivityLogs = [];
+
+// WhatsApp sometimes delivers contacts[0].profile.name as a placeholder ('.',
+// 'null', 'unknown') or blank. Collapse those to a meaningful fallback so the
+// dashboard never shows a bare '.' or empty contact name.
+function cleanName(name, fallback) {
+  const trimmed = String(name == null ? '' : name).trim();
+  const placeholders = new Set(['', '.', 'null', 'undefined', 'unknown', 'n/a', 'na']);
+  return placeholders.has(trimmed.toLowerCase()) ? fallback : trimmed;
+}
 
 /**
  * 1. Webhook Verification (GET /api/meta/webhook)
@@ -84,7 +93,7 @@ router.post('/', async (req, res) => {
               continue;
             }
 
-            const senderName = contactObj.profile?.name || `Customer (+${senderPhone})`;
+            const senderName = cleanName(contactObj.profile?.name, `+${senderPhone}`);
             const messageType = messageObj.type;
             let textContent = '';
             let hasImage = false;
@@ -92,25 +101,42 @@ router.post('/', async (req, res) => {
             if (messageType === 'text') {
               textContent = messageObj.text?.body || '';
             } else if (messageType === 'image') {
-              textContent = messageObj.image?.caption || '[Sent an image / payment screenshot]';
+              textContent = messageObj.image?.caption || '[📷 Sent an image / payment screenshot]';
               hasImage = true;
+            } else if (messageType === 'audio') {
+              // WhatsApp Cloud API doesn't deliver inbound voice-note transcription,
+              // so surface a clear label instead of a generic placeholder.
+              const voice = messageObj.audio?.voice;
+              textContent = (voice ? '[🎤 Voice note sent]' : '[🎵 Audio sent]');
+            } else if (messageType === 'video') {
+              textContent = messageObj.video?.caption || '[🎥 Video sent]';
+            } else if (messageType === 'document') {
+              textContent = `[📎 Document sent${messageObj.document?.filename ? `: ${messageObj.document.filename}` : ''}]`;
+            } else if (messageType === 'location') {
+              textContent = '[📍 Location shared]';
+            } else if (messageType === 'contacts') {
+              textContent = '[📄 Contact card shared]';
+            } else if (messageType === 'sticker') {
+              textContent = '[😀 Sticker sent]';
+            } else if (messageType === 'button') {
+              textContent = '[🔘 Button reply sent]';
+            } else if (messageType === 'interactive') {
+              textContent = '[🖱️ Interactive reply sent]';
+            } else if (messageType === 'reaction') {
+              textContent = '[👍 Reaction sent]';
             } else {
               textContent = `[Received ${messageType} message]`;
             }
 
             console.log(`[WhatsApp Inbound] From ${senderName} (${senderPhone}): "${textContent}"`);
 
-            // Check if AI is paused for this chat
-            const isPaused = conversationStore.isAiPaused(senderPhone);
-
-            // Persist the user message first (always, even if paused)
-            conversationStore.push(senderPhone, {
-              sender: 'user',
-              text: textContent,
-              timestamp: new Date().toISOString()
-            }, { channel: 'WhatsApp', contactName: senderName, senderId: senderPhone });
-
-            if (isPaused) {
+            // Handle paused chats inline (just record, no reply) - cheap.
+            if (conversationStore.isAiPaused(senderPhone)) {
+              conversationStore.push(senderPhone, {
+                sender: 'user',
+                text: textContent,
+                timestamp: new Date().toISOString()
+              }, { channel: 'WhatsApp', contactName: senderName, senderId: senderPhone });
               console.log(`[WhatsApp] AI is PAUSED for ${senderPhone}. Message recorded but no AI reply.`);
               webhookLogStore.add({
                 id: 'WH-PAUSED-' + Date.now(),
@@ -126,41 +152,17 @@ router.post('/', async (req, res) => {
               continue;
             }
 
-            // Process via CSS Agent
-            const agentResult = await cssAgent.handleMessage(textContent, {
-              senderId: senderPhone,
-              senderName: senderName,
-              phone: senderPhone,
+            // Enqueue full processing (persist -> AI -> send -> log) off the
+            // request path so one slow AI/API call can't delay other messages.
+            enqueue({
               channel: 'WhatsApp',
-              hasImageAttachment: hasImage
+              senderId: senderPhone,
+              senderName,
+              prefixedText: textContent,
+              processText: textContent,
+              hasImage,
+              idPrefix: 'WH'
             });
-
-            // Persist the AI response
-            conversationStore.push(senderPhone, {
-              sender: 'agent',
-              text: agentResult.replyText,
-              intent: agentResult.intent,
-              timestamp: new Date().toISOString()
-            }, { channel: 'WhatsApp', contactName: senderName, senderId: senderPhone });
-
-            // Send outbound response via WhatsApp Cloud API
-            const sendResult = await MetaMessagingService.sendWhatsAppMessage(senderPhone, agentResult.replyText);
-
-            // Log activity AFTER send confirmation
-            const logEntry = {
-              id: 'WH-' + Date.now(),
-              channel: 'WhatsApp',
-              sender: senderName,
-              senderId: senderPhone,
-              inboundText: textContent,
-              outboundText: agentResult.replyText,
-              intent: agentResult.intent,
-              escalation: agentResult.escalation ? JSON.stringify(agentResult.escalation) : '',
-              delivered: sendResult.success && !sendResult.simulated,
-              timestamp: new Date().toISOString()
-            };
-            webhookLogStore.add(logEntry);
-            webhookActivityLogs.unshift(logEntry);
           }
 
           // --- CASE A2: Instagram Comments & Mentions (via entry.changes) ---
@@ -183,43 +185,17 @@ router.post('/', async (req, res) => {
 
               console.log(`[Instagram Comment] From ${commenterName} (${commenterId}) on media ${mediaId}: "${commentText}"`);
 
-              const agentResult = await cssAgent.handleMessage(commentText, {
+              enqueue({
+                channel: 'Instagram',
                 senderId: commenterId,
                 senderName: commenterName,
-                channel: 'Instagram',
-                isComment: true,
-                mediaId: mediaId
-              });
-
-              conversationStore.push(commenterId, {
-                sender: 'user',
-                text: `[Comment on post] ${commentText}`,
-                timestamp: new Date().toISOString()
-              }, { channel: 'Instagram', contactName: commenterName, senderId: commenterId });
-              conversationStore.push(commenterId, {
-                sender: 'agent',
-                text: agentResult.replyText,
-                intent: agentResult.intent,
-                timestamp: new Date().toISOString()
-              }, { channel: 'Instagram', contactName: commenterName, senderId: commenterId });
-
-              // Reply to the comment via Instagram API
-              let sendResult = { success: false, simulated: true };
-              if (commentId) {
-                sendResult = await MetaMessagingService.replyToInstagramComment(commentId, agentResult.replyText);
-              }
-
-              webhookLogStore.add({
-                id: 'IG-COMMENT-' + Date.now(),
-                channel: 'Instagram',
-                sender: commenterName,
-                senderId: commenterId,
-                inboundText: `[Comment] ${commentText}`,
-                outboundText: agentResult.replyText,
-                intent: agentResult.intent,
-                escalation: agentResult.escalation ? JSON.stringify(agentResult.escalation) : '',
-                delivered: sendResult.success && !sendResult.simulated,
-                timestamp: new Date().toISOString()
+                prefixedText: `[Comment on post] ${commentText}`,
+                processText: commentText,
+                hasImage: false,
+                idPrefix: 'IG-COMMENT',
+                commentId,
+                mediaId,
+                isComment: true
               });
             }
 
@@ -238,43 +214,17 @@ router.post('/', async (req, res) => {
 
               console.log(`[Instagram Mention] From ${mentionerName} (${mentionerId}) on media ${mediaId}: "${mentionText}"`);
 
-              const agentResult = await cssAgent.handleMessage(mentionText, {
+              enqueue({
+                channel: 'Instagram',
                 senderId: mentionerId,
                 senderName: mentionerName,
-                channel: 'Instagram',
-                isMention: true,
-                mediaId: mediaId
-              });
-
-              conversationStore.push(mentionerId, {
-                sender: 'user',
-                text: `[Mention] ${mentionText}`,
-                timestamp: new Date().toISOString()
-              }, { channel: 'Instagram', contactName: mentionerName, senderId: mentionerId });
-              conversationStore.push(mentionerId, {
-                sender: 'agent',
-                text: agentResult.replyText,
-                intent: agentResult.intent,
-                timestamp: new Date().toISOString()
-              }, { channel: 'Instagram', contactName: mentionerName, senderId: mentionerId });
-
-              // Reply to the mention comment
-              let sendResult = { success: false, simulated: true };
-              if (mentionId) {
-                sendResult = await MetaMessagingService.replyToInstagramComment(mentionId, agentResult.replyText);
-              }
-
-              webhookLogStore.add({
-                id: 'IG-MENTION-' + Date.now(),
-                channel: 'Instagram',
-                sender: mentionerName,
-                senderId: mentionerId,
-                inboundText: `[Mention] ${mentionText}`,
-                outboundText: agentResult.replyText,
-                intent: agentResult.intent,
-                escalation: agentResult.escalation ? JSON.stringify(agentResult.escalation) : '',
-                delivered: sendResult.success && !sendResult.simulated,
-                timestamp: new Date().toISOString()
+                prefixedText: `[Mention] ${mentionText}`,
+                processText: mentionText,
+                hasImage: false,
+                idPrefix: 'IG-MENTION',
+                commentId: mentionId,
+                mediaId,
+                isMention: true
               });
             }
           }
@@ -305,24 +255,17 @@ router.post('/', async (req, res) => {
 
           console.log(`[${channel} Inbound] From ID ${senderId}: "${textContent}"`);
 
-          // Fetch real name from Meta Graph API (falls back to "Messenger User (XXXX)")
+          // Fetch real name from Meta Graph API (falls back to "Messenger User (XXXX)").
+          // Done off the request path in the queue - here we use a fallback label.
           let senderName = `${channel} User (${senderId.slice(-4)})`;
-          try {
-            const realName = await MetaMessagingService.getUserProfile(channel, senderId);
-            if (realName) senderName = realName;
-          } catch {}
 
-          // Check if AI is paused for this chat
-          const isPaused = conversationStore.isAiPaused(senderId);
-
-          // Persist the user message first (always, even if paused)
-          conversationStore.push(senderId, {
-            sender: 'user',
-            text: textContent,
-            timestamp: new Date().toISOString()
-          }, { channel, contactName: senderName, senderId });
-
-          if (isPaused) {
+          // Check if AI is paused for this chat (cheap inline path).
+          if (conversationStore.isAiPaused(senderId)) {
+            conversationStore.push(senderId, {
+              sender: 'user',
+              text: textContent,
+              timestamp: new Date().toISOString()
+            }, { channel, contactName: senderName, senderId });
             console.log(`[${channel}] AI is PAUSED for ${senderId}. Message recorded but no AI reply.`);
             webhookLogStore.add({
               id: 'META-PAUSED-' + Date.now(),
@@ -338,45 +281,18 @@ router.post('/', async (req, res) => {
             continue;
           }
 
-          // Process via CSS Agent
-          const agentResult = await cssAgent.handleMessage(textContent, {
-            senderId: senderId,
-            senderName: senderName,
-            channel: channel,
-            hasImageAttachment: hasImage
+          // Enqueue full processing (name-fetch -> AI -> send -> log) off the
+          // request path. The profile-name fetch is done lazily inside the
+          // worker so it never blocks the webhook response.
+          enqueue({
+            channel,
+            senderId,
+            senderName,
+            prefixedText: textContent,
+            processText: textContent,
+            hasImage,
+            idPrefix: 'META'
           });
-
-          // Persist the AI response
-          conversationStore.push(senderId, {
-            sender: 'agent',
-            text: agentResult.replyText,
-            intent: agentResult.intent,
-            timestamp: new Date().toISOString()
-          }, { channel, contactName: senderName, senderId });
-
-          // Send outbound reply — capture result before logging
-          let sendResult;
-          if (channel === 'Instagram') {
-            sendResult = await MetaMessagingService.sendInstagramMessage(senderId, agentResult.replyText);
-          } else {
-            sendResult = await MetaMessagingService.sendMessengerMessage(senderId, agentResult.replyText);
-          }
-
-          // Log activity AFTER send confirmation
-          const logEntry = {
-            id: 'META-' + Date.now(),
-            channel: channel,
-            sender: `${channel} User`,
-            senderId: senderId,
-            inboundText: textContent,
-            outboundText: agentResult.replyText,
-            intent: agentResult.intent,
-            escalation: agentResult.escalation ? JSON.stringify(agentResult.escalation) : '',
-            delivered: sendResult.success && !sendResult.simulated,
-            timestamp: new Date().toISOString()
-          };
-          webhookLogStore.add(logEntry);
-          webhookActivityLogs.unshift(logEntry);
         }
       }
       else if (!entry.changes) {
