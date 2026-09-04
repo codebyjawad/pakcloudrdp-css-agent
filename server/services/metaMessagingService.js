@@ -14,8 +14,8 @@ export class MetaMessagingService {
     const { phoneNumberId, accessToken } = META_CONFIG.whatsapp;
 
     if (!phoneNumberId || !accessToken) {
-      console.warn('[Meta WhatsApp] Warning: WHATSAPP_PHONE_NUMBER_ID or META_ACCESS_TOKEN is not configured. Simulating outbound send.');
-      return { success: true, simulated: true, channel: 'WhatsApp', to: toPhoneNumber, message: messageText };
+      console.error('[Meta WhatsApp] NOT CONFIGURED - reply NOT sent. Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN.');
+      return { success: false, error: 'WhatsApp not configured', channel: 'WhatsApp', to: toPhoneNumber };
     }
 
     const cleanPhone = toPhoneNumber.replace(/[^0-9]/g, '');
@@ -125,8 +125,11 @@ export class MetaMessagingService {
   static async sendMessengerMessage(recipientPsid, messageText) {
     const pageToken = await this._getPageToken();
     if (!pageToken) {
-      console.warn('[Meta Messenger] No page token available. Simulating outbound send.');
-      return { success: true, simulated: true, channel: 'Messenger', to: recipientPsid, message: messageText };
+      // Previously this returned success:true, so a missing FACEBOOK_PAGE_ID or
+      // FACEBOOK_PAGE_ACCESS_TOKEN silently swallowed every reply: the customer
+      // got nothing, the dashboard logged a delivery, and nothing looked wrong.
+      console.error('[Meta Messenger] NO PAGE TOKEN - reply NOT sent. Set FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN.');
+      return { success: false, error: 'No page access token configured', channel: 'Messenger', to: recipientPsid };
     }
 
     const url = `https://graph.facebook.com/${META_CONFIG.apiVersion}/me/messages?access_token=${pageToken}`;
@@ -166,8 +169,8 @@ export class MetaMessagingService {
   static async sendInstagramMessage(recipientIgsid, messageText) {
     const pageToken = await this._getPageToken();
     if (!pageToken) {
-      console.warn('[Meta Instagram] No page token available. Simulating outbound send.');
-      return { success: true, simulated: true, channel: 'Instagram', to: recipientIgsid, message: messageText };
+      console.error('[Meta Instagram] NO PAGE TOKEN - reply NOT sent. Set FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN.');
+      return { success: false, error: 'No page access token configured', channel: 'Instagram', to: recipientIgsid };
     }
 
     const url = `https://graph.facebook.com/${META_CONFIG.apiVersion}/me/messages?access_token=${pageToken}`;

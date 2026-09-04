@@ -19,6 +19,12 @@ import { MetaMessagingService } from './metaMessagingService.js';
 
 const CONCURRENCY = Number(process.env.MSG_QUEUE_CONCURRENCY || 2);
 
+// Sent when the agent throws. Saying nothing is the one thing that loses a
+// customer; a holding reply keeps the conversation alive until the owner looks.
+const AGENT_ERROR_REPLY =
+  'Shukriya for your message! Hamari team abhi aapko detail se reply karegi. ' +
+  'Aap apna requirement (plan / region) bhi bata dein taake foran quote de saken.';
+
 const queue = [];
 let active = 0;
 let drainedResolver = null;
@@ -84,53 +90,92 @@ async function processTask(task) {
   }
 
   // Persist the user message first (always, even if AI is paused).
-  conversationStore.push(senderId, {
-    sender: 'user',
-    text: prefixedText,
-    timestamp: new Date().toISOString()
-  }, { channel, contactName: resolvedName, senderId });
+  try {
+    conversationStore.push(senderId, {
+      sender: 'user',
+      text: prefixedText,
+      timestamp: new Date().toISOString()
+    }, { channel, contactName: resolvedName, senderId });
+  } catch (err) {
+    console.error('[MsgQueue] Could not record inbound message for ' + senderId + ':', err.message);
+  }
 
   if (conversationStore.isAiPaused(senderId)) {
     console.log(`[${channel}] AI is PAUSED for ${senderId}. Message recorded but no AI reply.`);
     return;
   }
 
-  const agentResult = await cssAgent.handleMessage(processText, {
-    senderId,
-    senderName: resolvedName,
-    phone: senderId,
-    channel,
-    hasImageAttachment: hasImage,
-    isComment: task.isComment,
-    isMention: task.isMention,
-    mediaId: task.mediaId
-  });
+  // The agent must never take the reply down with it. A throw here used to
+  // reject processTask, which pump() merely console.error'd - so the customer
+  // got nothing, Meta had already been sent its 200 and would never retry, and
+  // webhookLogStore.add below never ran, so it did not even show as a failure.
+  let agentResult;
+  try {
+    agentResult = await cssAgent.handleMessage(processText, {
+      senderId,
+      senderName: resolvedName,
+      phone: senderId,
+      channel,
+      hasImageAttachment: hasImage,
+      isComment: task.isComment,
+      isMention: task.isMention,
+      mediaId: task.mediaId
+    });
+  } catch (err) {
+    console.error('[MsgQueue] Agent failed for ' + senderId + ':', err.message);
+    agentResult = {
+      replyText: AGENT_ERROR_REPLY,
+      intent: 'AGENT_ERROR',
+      escalation: { type: 'AGENT_ERROR', priority: 'HIGH', reason: err.message }
+    };
+  }
 
-  conversationStore.push(senderId, {
-    sender: 'agent',
-    text: agentResult.replyText,
-    intent: agentResult.intent,
-    timestamp: new Date().toISOString()
-  }, { channel, contactName: resolvedName, senderId });
+  try {
+    conversationStore.push(senderId, {
+      sender: 'agent',
+      text: agentResult.replyText,
+      intent: agentResult.intent,
+      timestamp: new Date().toISOString()
+    }, { channel, contactName: resolvedName, senderId });
+  } catch (err) {
+    // Losing the transcript row is bad. Losing the reply is worse. Keep going.
+    console.error('[MsgQueue] Could not record agent reply for ' + senderId + ':', err.message);
+  }
 
-  // Send the outbound reply on the appropriate Meta channel.
-  let sendResult = { success: false, simulated: true };
-  let senderLabel = resolvedName || `${channel} User (${String(senderId).slice(-4)})`;
+  const senderLabel = channel === 'WhatsApp'
+    ? (resolvedName || '+' + senderId)
+    : (resolvedName || channel + ' User (' + String(senderId).slice(-4) + ')');
 
-  if (task.commentId) {
-    sendResult = await MetaMessagingService.replyToInstagramComment(task.commentId, agentResult.replyText);
-  } else if (channel === 'WhatsApp') {
-    senderLabel = resolvedName || `+${senderId}`;
-    sendResult = await MetaMessagingService.sendWhatsAppMessage(senderId, agentResult.replyText);
-  } else if (channel === 'Instagram') {
-    sendResult = await MetaMessagingService.sendInstagramMessage(senderId, agentResult.replyText);
-  } else {
-    sendResult = await MetaMessagingService.sendMessengerMessage(senderId, agentResult.replyText);
+  const send = async () => {
+    if (task.commentId) return MetaMessagingService.replyToInstagramComment(task.commentId, agentResult.replyText);
+    if (channel === 'WhatsApp') return MetaMessagingService.sendWhatsAppMessage(senderId, agentResult.replyText);
+    if (channel === 'Instagram') return MetaMessagingService.sendInstagramMessage(senderId, agentResult.replyText);
+    return MetaMessagingService.sendMessengerMessage(senderId, agentResult.replyText);
+  };
+
+  let sendResult;
+  try {
+    sendResult = await send();
+    // One retry covers a transient 5xx and the case where an expired token was
+    // just evicted from the cache by the first attempt.
+    if (!sendResult.success) {
+      console.warn('[MsgQueue] Send failed for ' + senderId + ' (' + sendResult.error + ') - retrying once.');
+      await new Promise((r) => setTimeout(r, 1500));
+      sendResult = await send();
+    }
+  } catch (err) {
+    sendResult = { success: false, error: err.message };
+  }
+
+  if (!sendResult.success) {
+    // The most important line in this file: the only signal that a customer is
+    // waiting on a reply that never arrived.
+    console.error('[MsgQueue] REPLY NOT DELIVERED to ' + senderLabel + ' (' + senderId + ') on ' + channel + ': ' + sendResult.error);
   }
 
   const idPrefix = task.idPrefix || 'META';
   webhookLogStore.add({
-    id: `${idPrefix}-` + Date.now(),
+    id: idPrefix + '-' + Date.now(),
     channel,
     sender: senderLabel,
     senderId,
@@ -138,7 +183,7 @@ async function processTask(task) {
     outboundText: agentResult.replyText,
     intent: agentResult.intent,
     escalation: agentResult.escalation ? JSON.stringify(agentResult.escalation) : '',
-    delivered: sendResult.success && !sendResult.simulated,
+    delivered: Boolean(sendResult.success),
     timestamp: new Date().toISOString()
   });
 }

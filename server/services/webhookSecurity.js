@@ -15,8 +15,11 @@ import { db } from './db.js';
 export function verifyWebhookSignature(rawBody, signatureHeader) {
   const secret = META_CONFIG.appSecret;
   if (!secret) {
-    console.warn('[Meta Webhook] WARNING: META_APP_SECRET is not set. Webhook signature verification is DISABLED.');
-    return true;
+    // Previously this returned true, so with no app secret ANY caller could POST
+    // a forged event and have the agent act on it. Refusing is the safe default:
+    // a missing secret is a setup error, not a reason to trust the internet.
+    console.error('[Meta Webhook] META_APP_SECRET is not set - rejecting event. Set it to accept webhooks.');
+    return false;
   }
   if (!signatureHeader) {
     console.warn('[Meta Webhook] Missing X-Hub-Signature-256 header. Rejecting event.');
