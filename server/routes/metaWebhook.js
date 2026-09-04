@@ -172,10 +172,13 @@ router.post('/', async (req, res) => {
 
             if (field === 'comments' && value) {
               const commentText = value.text || '';
-              const commenterId = value.from?.id || '';
+              const commenterId = value.from?.id || value.sender_id || '';
               const commenterName = value.from?.username || commenterId.slice(-4);
-              const mediaId = value.media_id || '';
-              const commentId = value.comment_id || '';
+              // Tolerate both payload shapes: older versions put the media and
+              // comment ids at value.media_id / value.comment_id, newer versions
+              // nest them at value.media.id and use value.id for the comment.
+              const mediaId = value.media_id || value.media?.id || '';
+              const commentId = value.comment_id || value.id || '';
 
               const dedupKey = `ig-comment:${commentId}:${commenterId}`;
               if (isDuplicateEvent(dedupKey)) {
@@ -201,10 +204,12 @@ router.post('/', async (req, res) => {
 
             if (field === 'mentions' && value) {
               const mentionText = value.text || '';
-              const mentionerId = value.from?.id || '';
+              const mentionerId = value.from?.id || value.sender_id || '';
               const mentionerName = value.from?.username || mentionerId.slice(-4);
-              const mediaId = value.media_id || '';
-              const mentionId = value.mention_id || '';
+              // Same dual-shape tolerance as comments: media_id (old) vs
+              // media.id (new) and comment_id/mention_id (old) vs value.id (new).
+              const mediaId = value.media_id || value.media?.id || '';
+              const mentionId = value.comment_id || value.mention_id || value.id || '';
 
               const dedupKey = `ig-mention:${mentionId}:${mentionerId}`;
               if (isDuplicateEvent(dedupKey)) {
