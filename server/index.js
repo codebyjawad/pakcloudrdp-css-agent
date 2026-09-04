@@ -15,6 +15,7 @@ import escalationsRouter from './routes/escalations.js';
 import chatsRouter from './routes/chats.js';
 import metaSyncRouter from './routes/metaSync.js';
 import { META_CONFIG } from './config/metaConfig.js';
+import { tokenRefreshService } from './services/tokenRefreshService.js';
 
 dotenv.config();
 
@@ -92,4 +93,8 @@ app.listen(PORT, HOST, () => {
   console.log(`💬 Chat API:          http://localhost:${PORT}/api/chat/message`);
   console.log(`📋 Price Matrix API:  http://localhost:${PORT}/api/plans`);
   console.log(`======================================================\n`);
+
+  // Self-healing: keep outbound Meta tokens valid (validates on boot and
+  // daily, re-minting automatically if a token is ever invalidated/expired).
+  tokenRefreshService.start();
 });
