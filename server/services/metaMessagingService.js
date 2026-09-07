@@ -54,6 +54,63 @@ export class MetaMessagingService {
   }
 
   /**
+   * Send an APPROVED WhatsApp template message (the promo/broadcast path).
+   * Free-form text only works inside a 24h customer session; reaching any
+   * customer outside that window requires a pre-approved template.
+   * @param {string} toPhoneNumber - Recipient phone number (e.g. 923001234567)
+   * @param {object} opts
+   *   @param {string} opts.templateName  - Approved template name, e.g. 'pakcloudrdp_promo'
+   *   @param {string} [opts.language]    - Template language code (default 'en')
+   *   @param {Array}  [opts.components]  - e.g. [{ type:'body', parameters:[{type:'text', text:'Ali'}] }]
+   */
+  static async sendWhatsAppTemplate(toPhoneNumber, { templateName, language = 'en', components = [] } = {}) {
+    const { phoneNumberId, accessToken } = META_CONFIG.whatsapp;
+
+    if (!phoneNumberId || !accessToken) {
+      console.error('[Meta WhatsApp Template] NOT CONFIGURED - broadcast NOT sent.');
+      return { success: false, error: 'WhatsApp not configured', channel: 'WhatsApp', to: toPhoneNumber };
+    }
+    if (!templateName) {
+      return { success: false, error: 'No template name provided', channel: 'WhatsApp', to: toPhoneNumber };
+    }
+
+    const cleanPhone = toPhoneNumber.replace(/[^0-9]/g, '');
+    const url = `https://graph.facebook.com/${META_CONFIG.apiVersion}/${phoneNumberId}/messages`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanPhone,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: language },
+            components
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Meta WhatsApp template API error');
+      }
+
+      console.log(`[Meta WhatsApp Template] ${templateName} sent successfully to ${cleanPhone}:`, data);
+      return { success: true, data };
+    } catch (err) {
+      console.error('[Meta WhatsApp Template] Error sending message:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
    * Fetch and cache the page-scoped access token for the configured Facebook page.
    * Messenger & Instagram sending MUST use a page access token (a system-user token
    * cannot send messages as a page). Falls back to the configured page token if

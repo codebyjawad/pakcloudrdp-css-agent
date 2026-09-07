@@ -146,6 +146,13 @@ async function processTask(task) {
     ? (resolvedName || '+' + senderId)
     : (resolvedName || channel + ' User (' + String(senderId).slice(-4) + ')');
 
+  // Repeat-guard silence: an empty reply is intentional (REPEAT_SILENT) and
+  // must never be pushed to Meta's API.
+  if (!String(agentResult.replyText || '').trim()) {
+    console.log(`[${channel}] Empty reply (${agentResult.intent}) for ${senderId} — not sending.`);
+    return;
+  }
+
   const send = async () => {
     if (task.commentId) return MetaMessagingService.replyToInstagramComment(task.commentId, agentResult.replyText);
     if (channel === 'WhatsApp') return MetaMessagingService.sendWhatsAppMessage(senderId, agentResult.replyText);

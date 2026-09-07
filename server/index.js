@@ -14,6 +14,7 @@ import ordersRouter from './routes/orders.js';
 import escalationsRouter from './routes/escalations.js';
 import chatsRouter from './routes/chats.js';
 import metaSyncRouter from './routes/metaSync.js';
+import broadcastRouter from './routes/broadcast.js';
 import { META_CONFIG } from './config/metaConfig.js';
 import { tokenRefreshService } from './services/tokenRefreshService.js';
 
@@ -46,6 +47,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/escalations', escalationsRouter);
 app.use('/api/chats', chatsRouter);
 app.use('/api/meta/sync', metaSyncRouter);
+app.use('/api/broadcast', broadcastRouter);
 
 // Health check endpoint
 const isPlaceholder = (v) => !v || /your_|here|example|<|>|change/i.test(v) || v === 'your_facebook_page_id_here' || v === 'your_instagram_account_id_here';

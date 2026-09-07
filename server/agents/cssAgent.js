@@ -8,6 +8,7 @@ import { KNOWLEDGE_BASE } from '../config/knowledgeBase.js';
 import { escalationEngine } from './escalationEngine.js';
 import { orderManager } from './orderManager.js';
 import { geminiService } from '../services/geminiService.js';
+import { conversationStore } from '../services/conversationStore.js';
 
 export class CSSAgent {
   constructor() {
@@ -41,13 +42,97 @@ export class CSSAgent {
     const planMatch = this.detectPlan(lowerText);
     const regionMatch = this.detectRegion(lowerText);
 
-    // 3. Match Intent & generate response
+    // 3. Load the customer's FULL prior conversation. Every reply (rule-based or
+    //    AI) is made in context of what this person already said, never in
+    //    isolation. Incoming messages are persisted BEFORE the agent runs, so
+    //    this includes the current message plus all earlier turns.
+    const chatKey = metadata.sessionId || metadata.senderId || '';
+    const priorHistory = conversationStore.get(chatKey) || [];
+
+    // 3b. ANTI-REPEAT / ANTI-SPAM GUARD — only trigger on consecutive repeated
+    // objections within a recent window (e.g. 30 minutes). Never silence greetings,
+    // conversational openers, or return visits.
     let responseText = '';
     let intent = 'GENERAL_QUERY';
     let suggestedActions = [];
+    let repeatState = 'none'; // 'handoff' | 'silent'
+    let repeatHandoffText = null;
+
+    const GREETING_WORDS = new Set(['hi', 'hello', 'hey', 'salam', 'assalam', 'aoa', 'assalam o alaikum', 'assalamu alaikum', 'slaam', 'slm', 'hy']);
+    const isGreeting = GREETING_WORDS.has(lowerText) ||
+      lowerText.startsWith('hi ') ||
+      lowerText.startsWith('hello ') ||
+      lowerText.startsWith('hey ') ||
+      lowerText.startsWith('salam') ||
+      lowerText.startsWith('assalam');
+
+    if (!escalationTrigger && !isGreeting) {
+      const userMsgs = priorHistory.filter((m) => m.sender === 'user');
+      // Incoming message was already pushed, so prevUser is at length - 2
+      const prevUser = userMsgs.length >= 2 ? userMsgs[userMsgs.length - 2] : null;
+      const prevTime = prevUser ? new Date(prevUser.timestamp || 0).getTime() : 0;
+      const isRecentConsecutiveRepeat = Boolean(
+        prevUser &&
+        String(prevUser.text || '').trim().toLowerCase() === lowerText &&
+        (Date.now() - prevTime < 30 * 60 * 1000)
+      );
+
+      if (isRecentConsecutiveRepeat) {
+        repeatHandoffText =
+          'Bhai, aapka concern bilkul samajh aa raha hai. 🤝 Main isko owner ko ' +
+          'personally forward kar raha hoon — wo khud aapko WhatsApp par message ' +
+          'kareinge aur payment confirmation ke har point par aapki madad kareinge. ' +
+          'Koi tension nahi, hum yahan hain.';
+        const lastAgentMsg = priorHistory.filter((m) => m.sender === 'agent').pop();
+        const handoffRecentlySent = Boolean(
+          lastAgentMsg &&
+          (lastAgentMsg.text || '').includes('personally forward kar raha hoon') &&
+          (Date.now() - new Date(lastAgentMsg.timestamp || 0).getTime() < 30 * 60 * 1000)
+        );
+
+        if (handoffRecentlySent) {
+          repeatState = 'silent';
+          responseText = '';
+          intent = 'REPEAT_SILENT';
+        } else {
+          repeatState = 'handoff';
+          escalationRecord = escalationEngine.logEscalation(
+            { id: metadata.senderId, name: metadata.senderName || 'Customer', phone: metadata.phone },
+            metadata.channel || 'WhatsApp',
+            { type: 'REPEAT_OBJECTION', priority: 'HIGH', reason: 'Repeated identical customer message — unresolved trust/objection.' },
+            rawText
+          );
+          responseText = repeatHandoffText;
+          intent = 'REPEAT_HANDOFF';
+          suggestedActions = ['Owner Follow-up'];
+        }
+      }
+    }
+
+    // 4. Match Intent & generate response
+
+    // --- AI-FIRST (ongoing conversations): reply with full-chat context ---
+    // Once this person already has a chat history, the AI reads the ENTIRE
+    // previous conversation and answers contextually — it remembers which
+    // plan/region was already quoted, whether they said they will pay, what was
+    // already answered, and continues from there. Escalations (payment proof,
+    // discount, refund) still take priority below with their safe canned replies.
+    let aiContextReply = null;
+    let aiAlreadyTried = false;
+    if (!escalationTrigger && geminiService.isConfigured() && priorHistory.length >= 2 && repeatState === 'none') {
+      aiAlreadyTried = true;
+      const gem = await geminiService.generate(this.kb, rawText, '', priorHistory);
+      if (gem.ok) aiContextReply = gem.text;
+    }
+
+    if (aiContextReply) {
+      intent = 'AI_CONTEXT';
+      responseText = aiContextReply;
+      suggestedActions = ['Cheapest Plan', 'Plans Matrix', 'Payment Accounts'];
+    }
 
     // --- Intent: Payment Proof Submitted / Verification ---
-    if (escalationTrigger && escalationTrigger.type === 'PAYMENT_VERIFICATION') {
+    else if (escalationTrigger && escalationTrigger.type === 'PAYMENT_VERIFICATION') {
       intent = 'PAYMENT_VERIFICATION';
       responseText = `Shukriya! Aapki payment details aur screenshot receive ho gaya hai. 🧾
 
@@ -134,6 +219,70 @@ Aapko kis region mein chahiye? 📍`;
       suggestedActions = ['EU Region', 'US Region', 'India', 'UK'];
     }
 
+    // --- Intent: Polite Acknowledgment or Exit ---
+    else if (
+      /^(ok|okay|theek|thik|thek|acha|achha|got it|hnn|hn|ji|jee|sahi|bilkul)[\.\!\s]*$/i.test(lowerText) ||
+      /^(ok|okay)\s+(bhai|sir|bro|janab|dear)[\.\!\s]*$/i.test(lowerText)
+    ) {
+      intent = 'ACKNOWLEDGMENT';
+      responseText = 'Jee bilkul bhai! 👍 Jab bhi aap ready hon ya koi mazeed sawal ho, bas bata dijiyega. Hum yahan madad ke liye hazir hain! 🚀';
+      suggestedActions = ['View Plans', 'Payment Accounts'];
+    }
+    else if (/\b(filhal nahi|filhal nhi|abhi nahi|abhi nhi|baad me|baad mein|not now|later|cancel)\b/i.test(lowerText)) {
+      intent = 'DEFERRAL';
+      responseText = 'Koi masla nahi bhai, bilkul apna time lein! Jab bhi aapko RDP ki zaroorat ho, hum 24/7 yahan available hain. Have a great day! 😊';
+      suggestedActions = ['View Plans'];
+    }
+    else if (/^(shukriya|thanks|thank you|jazakallah|bohat shukriya)[\.\!\s]*(bhai|sir|bro)?[\.\!\s]*$/i.test(lowerText)) {
+      intent = 'COURTESY';
+      responseText = 'Aapka bohat shukriya! Koi bhi mazeed help chahiye ho toh bila-jhijhak pooch sakte hain. 🤝';
+      suggestedActions = ['View Plans', 'Payment Accounts'];
+    }
+
+    // --- Intent: Ready to Buy / Send Payment Request (High Buying Intent) ---
+    else if (
+      (
+        /\b(number|account|accounts|bank|iban|jazzcash|easypaisa|nayapay|raast)\b/i.test(lowerText) &&
+        /\b(do|dein|den|bhejo|bhej dein|bhej den|send|kahan|share|batao|bata den|chahiye|details)\b/i.test(lowerText)
+      ) ||
+      /\b(pay kar|pay kr|paise kahan|pay kahan|abhi lena|buy karna|order karna|pay kar doon|pay kr don|payment details)\b/i.test(lowerText)
+    ) {
+      intent = 'PAYMENT_METHODS';
+      responseText = `Aap bilkul foran order kar sakte hain! 🚀 Payment transfer details yeh hain:
+
+📱 *JazzCash / Raast / NayaPay*: 03014149031
+Title: *Muhammad Jawad Iqbal Khan*
+
+🏦 *UBL Bank*:
+A/C: *300841314*
+IBAN: *PK77UNIL0109000300841314*
+Title: *Muhammad Jawad Iqbal Khan*
+
+Payment karne ke baad uska *screenshot ya Transaction ID* yahan share kar dein. Owner verify hotay hi *~30 mins* mein aapka RDP prepare ho kar deliver ho jayega! ✅`;
+      suggestedActions = ['Sent Payment Proof', 'Delivery ETA', 'Setup Help'];
+    }
+
+    // --- Intent: Delivery / Setup Time / Availability ETA ---
+    else if (
+      (
+        /\b(kb|kab|kitna time|kitni der)\b/i.test(lowerText) &&
+        /\b(milega|mil jayga|mil jayega|available|ready|deliver|tayyar|hoga)\b/i.test(lowerText)
+      ) ||
+      /\b(how long|setup time|delivery time|delivery eta|how fast|when will i get)\b/i.test(lowerText)
+    ) {
+      intent = 'DELIVERY_ETA';
+      responseText = `⏱️ *Account Setup Time & Delivery SLA:*
+Working hours (*9:00 AM – 12:00 AM PKT*) mein payment owner verify hotay hi aapka dedicated RDP *within 30 minutes* prepare ho kar deliver ho jata hai! 🚀
+
+Aapko WhatsApp par Dedicated IP, Username aur Password foran send kar diye jatay hain. (12 AM ke baad aane walay orders aglay roz subah deliver hotay hain).
+
+Customer ko complete details milti hain:
+• Dedicated RDP IP Address
+• Administrator Username & Password
+• Remote Desktop connection guide 📱`;
+      suggestedActions = ['Payment Accounts', 'View Starter Specs', 'Order Now'];
+    }
+
     // --- Intent: Cheapest Plan / Sasta RDP ---
     else if (
       lowerText.includes('sasta') ||
@@ -141,7 +290,8 @@ Aapko kis region mein chahiye? 📍`;
       lowerText.includes('low budget') ||
       lowerText.includes('kam qeemat') ||
       lowerText.includes('minimum price') ||
-      lowerText.includes('starting price')
+      lowerText.includes('starting price') ||
+      lowerText.includes('lowest price')
     ) {
       intent = 'CHEAPEST_PLAN';
       responseText = this.kb.cannedReplies.cheapestPlan;
@@ -150,21 +300,8 @@ Aapko kis region mein chahiye? 📍`;
 
     // --- Intent: All Plans List / Full Price List / Plan Pricing ---
     else if (
-      lowerText.includes('pricing') ||
-      lowerText.includes('price') ||
-      lowerText.includes('cost') ||
-      lowerText.includes('charges') ||
-      lowerText.includes('rate') ||
-      lowerText.includes('all plans') ||
-      lowerText.includes('each plan') ||
-      lowerText.includes('price list') ||
-      lowerText.includes('plans') ||
-      lowerText.includes('plan') ||
-      lowerText.includes('packages') ||
-      lowerText.includes('package') ||
-      lowerText.includes('specs') ||
-      lowerText.includes('kitne ka') ||
-      lowerText.includes('qeemat')
+      /\b(pricing|price list|plans list|package list|all plans|all plan|sab plans|sab plan|rate list|rates list|kitne ka|sab ke rate|qeemat|poori list)\b/i.test(lowerText) ||
+      lowerText === 'plans' || lowerText === 'price' || lowerText === 'pricing'
     ) {
       intent = 'ALL_PLANS';
       responseText = `💵 *PAKCLOUDRDP — COMPLETE PRICE & SPECS LIST*
@@ -212,45 +349,16 @@ Har machine ke sath 100% Dedicated Private IP milti hai. Aap kis region ki prici
 
     // --- Intent: Netflix / Banking / Use cases / Legality ---
     else if (
-      lowerText.includes('netflix') ||
-      lowerText.includes('banking') ||
-      lowerText.includes('youtube') ||
-      lowerText.includes('streaming') ||
-      lowerText.includes('bot') ||
-      lowerText.includes('automation') ||
-      lowerText.includes('forex') ||
-      lowerText.includes('trading') ||
-      lowerText.includes('use kar sakta') ||
-      lowerText.includes('chala sakta')
+      (
+        /\b(netflix|banking|youtube|streaming|forex|trading|crypto)\b/i.test(lowerText) ||
+        /\b(automation|trading bot|forex bot|crypto bot|bot run|bot chalana|bot chalta)\b/i.test(lowerText) ||
+        /\b(use kar sakta|chala sakta|allowed hai|chale ga|chalega)\b/i.test(lowerText)
+      ) &&
+      !/\b(bot kyu|bot kyun|bot sai|bot sahi|bot baat|bot bat|chatbot|apka bot)\b/i.test(lowerText)
     ) {
       intent = 'USE_CASE_COMPLIANCE';
       responseText = this.kb.cannedReplies.streamingBanking;
       suggestedActions = ['Choose Plan', 'Payment Details', 'Cheapest Plan'];
-    }
-
-    // --- Intent: Delivery / Setup Time / ETA (Prioritized before payment) ---
-    else if (
-      lowerText.includes('how long') ||
-      lowerText.includes('set up') ||
-      lowerText.includes('setup') ||
-      lowerText.includes('kitna time') ||
-      lowerText.includes('kab milega') ||
-      lowerText.includes('kab tak') ||
-      lowerText.includes('delivery time') ||
-      lowerText.includes('delivery') ||
-      lowerText.includes('eta')
-    ) {
-      intent = 'DELIVERY_ETA';
-      responseText = `⏱️ *Account Setup Time & Delivery SLA:*
-Working hours (*9:00 AM – 12:00 AM PKT*) mein payment owner verify hotay hi aapka dedicated RDP *within 30 minutes* prepare ho kar deliver ho jata hai! 🚀
-
-Aapko WhatsApp par Dedicated IP, Username aur Password foran send kar diye jatay hain. (12 AM ke baad aane walay orders aglay roz subah deliver hotay hain).
-
-Customer ko complete details milti hain:
-• Dedicated RDP IP Address
-• Administrator Username & Password
-• Remote Desktop connection guide 📱`;
-      suggestedActions = ['View Starter Specs', 'Payment Accounts', 'Order Now'];
     }
 
     // --- Intent: What is RDP / How does it work ---
@@ -356,7 +464,10 @@ Jee aapko machine ka *Full Administrator (Root)* access milta hai! Aap apne zaro
     }
 
     // --- Intent: Trial Request ---
-    else if (lowerText.includes('trial') || lowerText.includes('demo') || lowerText.includes('test')) {
+    else if (
+      /\b(trial|free trial|demo)\b/i.test(lowerText) ||
+      /\b(test rdp|test machine|free test)\b/i.test(lowerText)
+    ) {
       intent = 'TRIAL_INQUIRY';
       responseText = this.kb.cannedReplies.trial;
       suggestedActions = ['Order Little EU (₨1,500)', 'See Pricing'];
@@ -435,21 +546,21 @@ Aapko kis maqsad k liye RDP chahiye ya kisi specific plan ki details check karni
     // --- Default Fallback (Gemini-assisted, strictly KB-constrained) ---
     else {
       intent = 'FALLBACK_HELP';
-      const staticFallback = `Welcome to *PakCloudRDP*! 💻
-Hum aapko high-performance Dedicated Windows RDP provide karte hain dedicated private IP k saath.
+      // Avoid repeating the same 5-line static pitch if recently sent
+      const alreadySentPitch = priorHistory.slice(-3).some(
+        (m) => m.sender === 'agent' && (m.text || '').includes('Sabse sasta *Little EU*')
+      );
+      const staticFallback = alreadySentPitch
+        ? `Jee bhai, batayein main aapki kis cheez mein madad karoon? Agar kisi specific plan, payment details ya setup ke baare mein poochna hai toh zaroor batayein. 🤝`
+        : `Jee bhai, main yahan hoon! 🙏
+Aapko jo bhi chahiye — *plans & pricing*, *regions*, *payment details*, ya *delivery/support* — bata dein, main foran jawab deta hoon.
 
-Aap mujh se pooch sakte hain:
-1️⃣ *Plans & Pricing* (e.g. "sasta rdp", "starter US price")
-2️⃣ *Available Regions* (EU, UK, US, India, SG, JP)
-3️⃣ *Payment Accounts* (JazzCash, Raast, NayaPay, UBL)
-4️⃣ *Delivery & Support* (30 min delivery)
+Sabse sasta *Little EU* sirf *₨1,500/month* se start hota hai aur payment verification ke baad delivery *~30 min* mein ho jati hai.
 
-Aapko kis bare mein help chahiye? 🚀`;
+Aapko kis kaam ke liye RDP chahiye? Bata dein, main aapko best plan suggest karta hoon. 🚀`;
 
-      // Try Gemini ONLY if configured. It is constrained to the KB and the
-      // result is validated; otherwise we fall back to the static reply.
-      if (geminiService.isConfigured()) {
-        const gem = await geminiService.generate(this.kb, rawText, staticFallback);
+      if (geminiService.isConfigured() && !aiAlreadyTried && repeatState === 'none') {
+        const gem = await geminiService.generate(this.kb, rawText, staticFallback, priorHistory);
         if (gem.ok) {
           responseText = gem.text;
         } else {
@@ -459,6 +570,17 @@ Aapko kis bare mein help chahiye? 🚀`;
         responseText = staticFallback;
       }
       suggestedActions = ['Cheapest Plan', 'Plans Matrix', 'Payment Accounts'];
+    }
+
+    // Anti-repeat guard takes precedence over the rule/AI ladder output so the
+    // customer never receives the same pitch twice.
+    if (repeatState === 'silent') {
+      responseText = '';
+      intent = 'REPEAT_SILENT';
+    } else if (repeatState === 'handoff') {
+      responseText = repeatHandoffText;
+      intent = 'REPEAT_HANDOFF';
+      suggestedActions = ['Owner Follow-up'];
     }
 
     return {
@@ -473,33 +595,36 @@ Aapko kis bare mein help chahiye? 🚀`;
   }
 
   detectPlan(text) {
-    if (text.includes('flagship')) return this.kb.plans.find(p => p.id === 'flagship');
-    if (text.includes('elite')) return this.kb.plans.find(p => p.id === 'elite');
-    if (text.includes('pro')) return this.kb.plans.find(p => p.id === 'pro');
-    if (text.includes('plus')) return this.kb.plans.find(p => p.id === 'plus');
-    if (text.includes('standard')) return this.kb.plans.find(p => p.id === 'standard');
-    if (text.includes('starter')) return this.kb.plans.find(p => p.id === 'starter');
-    if (text.includes('little')) return this.kb.plans.find(p => p.id === 'little');
+    if (/\bflagship\b/i.test(text) || /\b(96\s*gb|18\s*vcpu)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'flagship');
+    if (/\belite\b/i.test(text) || /\b(64\s*gb|16\s*vcpu)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'elite');
+    // Ensure "pro" does not match problem, proceed, proxy, provider, promise, product, profile, program, etc.
+    if (
+      (/\bpro\b/i.test(text) && !/\b(problem|proceed|profile|prompt|provider|proxy|product|promise|program|proper|protect|project)\b/i.test(text)) ||
+      /\b(48\s*gb|12\s*vcpu)\b/i.test(text)
+    ) {
+      return this.kb.plans.find(p => p.id === 'pro');
+    }
+    if (/\bplus\b/i.test(text) || /\b(24\s*gb|8\s*vcpu)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'plus');
+    if (/\bstandard\b/i.test(text) || /\b(12\s*gb|6\s*vcpu)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'standard');
+    if (/\bstarter\b/i.test(text) || /\b(8\s*gb|4\s*vcpu)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'starter');
+    if (/\blittle\b/i.test(text) || /\b(3\s*gb|1\s*vcpu|1500\s*wala)\b/i.test(text)) return this.kb.plans.find(p => p.id === 'little');
     return null;
   }
 
   detectRegion(text) {
-    if (text.includes('singapore') || text.includes('sg')) return this.kb.regions.find(r => r.id === 'sg');
-    if (text.includes('japan') || text.includes('tokyo') || text.includes('jp')) return this.kb.regions.find(r => r.id === 'jp');
-    if (text.includes('australia') || text.includes('sydney') || text.includes('au')) return this.kb.regions.find(r => r.id === 'au');
-    if (text.includes('india') || text.includes('mumbai') || text.includes('bombay') || /(^|\W)ind(\W|$)/.test(text)) return this.kb.regions.find(r => r.id === 'in');
-    // All US sub-regions collapse to the single canonical "US" region.
-    // We only ever quote ONE US price (the max). e.g. "us central", "us west", "us east", "usa", "united states", "us"
+    if (/\b(singapore|sg)\b/i.test(text)) return this.kb.regions.find(r => r.id === 'sg');
+    if (/\b(japan|tokyo|jp)\b/i.test(text)) return this.kb.regions.find(r => r.id === 'jp');
+    // Use word boundary for au so "aur" never matches Australia!
+    if (/\b(australia|sydney|aus)\b/i.test(text) || (/\bau\b/i.test(text) && !/\b(aur|auto|audio)\b/i.test(text))) return this.kb.regions.find(r => r.id === 'au');
+    if (/\b(india|mumbai|bombay|ind)\b/i.test(text)) return this.kb.regions.find(r => r.id === 'in');
+    // US and states / cities
     if (
-      text.includes('us central') || text.includes('us-c') || text.includes('central us') ||
-      text.includes('us west') || text.includes('us-w') || text.includes('california') ||
-      text.includes('us east') || text.includes('us-e') || text.includes('new york') || text.includes('virginia') ||
-      text.includes('usa') || text.includes('united states') || /(^|\W)us(\W|$)/.test(text)
+      /\b(us|usa|united states|us central|us-c|central us|us west|us-w|california|us east|us-e|new york|virginia|texas|dallas|houston|pennsylvania)\b/i.test(text)
     ) {
       return this.kb.regions.find(r => r.id === 'us');
     }
-    if (text.includes('uk') || text.includes('london') || text.includes('britain')) return this.kb.regions.find(r => r.id === 'uk');
-    if (text.includes('eu') || text.includes('europe') || text.includes('germany') || text.includes('france')) return this.kb.regions.find(r => r.id === 'eu');
+    if (/\b(uk|london|britain|england|birmingham|united kingdom)\b/i.test(text)) return this.kb.regions.find(r => r.id === 'uk');
+    if (/\b(eu|europe|germany|france|frankfurt)\b/i.test(text)) return this.kb.regions.find(r => r.id === 'eu');
     return null;
   }
 

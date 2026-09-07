@@ -110,6 +110,146 @@ router.post('/:id/send', async (req, res) => {
   });
 });
 
+// Owner sends the approved PLAN-SELECTION follow-up template to a chat
+// (ask which plan they're interested in — used after a customer shows interest).
+router.post('/:id/followup', async (req, res) => {
+  const sessionId = req.params.id;
+  const meta = conversationStore.getMeta(sessionId);
+  const recipientId = meta.senderId || sessionId;
+  const channel = meta.channel || 'WhatsApp';
+
+  if (channel.toLowerCase() !== 'whatsapp') {
+    return res.status(400).json({ error: 'Follow-up template is WhatsApp-only.' });
+  }
+
+  const first = (meta.contactName || 'there').split(' ')[0];
+  const templateName = process.env.FOLLOWUP_TEMPLATE_NAME || 'pakcloudrdp_followup';
+  let dispatchResult;
+  try {
+    dispatchResult = await MetaMessagingService.sendWhatsAppTemplate(recipientId, {
+      templateName,
+      language: 'en',
+      components: [{ type: 'body', parameters: [{ type: 'text', text: first }] }],
+    });
+  } catch (err) {
+    dispatchResult = { success: false, error: err.message };
+  }
+
+  if (dispatchResult.success) {
+    conversationStore.push(sessionId, {
+      sender: 'owner',
+      text: `[Follow-up template "${templateName}" sent]`,
+      timestamp: new Date().toISOString(),
+      channel,
+    }, { channel, contactName: meta.contactName, senderId: recipientId });
+  }
+
+  res.json({ success: true, templateName, dispatchResult });
+});
+
+// Owner sends the approved RENEWAL REMINDER template to a chat (reliable even
+// outside the 24h window — UTILITY category, so not capped like marketing).
+// Body: {firstName, planName, amountPkr, dueDate}
+router.post('/:id/renewal-reminder', async (req, res) => {
+  const sessionId = req.params.id;
+  const meta = conversationStore.getMeta(sessionId);
+  const recipientId = meta.senderId || sessionId;
+  const channel = meta.channel || 'WhatsApp';
+
+  if (channel.toLowerCase() !== 'whatsapp') {
+    return res.status(400).json({ error: 'Renewal reminder template is WhatsApp-only.' });
+  }
+
+  const { firstName, planName, amountPkr, dueDate } = req.body || {};
+  if (!firstName || !dueDate) {
+    return res.status(400).json({ error: 'firstName and dueDate are required.' });
+  }
+
+  const templateName = process.env.RENEWAL_TEMPLATE_NAME || 'pakcloudrdp_renewal';
+  let dispatchResult;
+  try {
+    dispatchResult = await MetaMessagingService.sendWhatsAppTemplate(recipientId, {
+      templateName,
+      language: 'en',
+      components: [{
+        type: 'body',
+        parameters: [
+          { type: 'text', text: firstName },
+          { type: 'text', text: planName || 'RDP' },
+          { type: 'text', text: String(amountPkr || '') },
+          { type: 'text', text: dueDate },
+        ],
+      }],
+    });
+  } catch (err) {
+    dispatchResult = { success: false, error: err.message };
+  }
+
+  if (dispatchResult.success) {
+    conversationStore.push(sessionId, {
+      sender: 'owner',
+      text: `[Renewal reminder "${templateName}" sent — ${planName || 'RDP'} / ₨${amountPkr || ''} due ${dueDate}]`,
+      timestamp: new Date().toISOString(),
+      channel,
+    }, { channel, contactName: meta.contactName, senderId: recipientId });
+  }
+
+  res.json({ success: true, templateName, dispatchResult });
+});
+
+// Owner sends the approved HANDOVER template — RDP delivery with IP/user/pass
+// (UTILITY category: post-purchase, works outside the 24h window too).
+// Body: {firstName, ip, username, password, planName, region, renewalDate}
+router.post('/:id/handover', async (req, res) => {
+  const sessionId = req.params.id;
+  const meta = conversationStore.getMeta(sessionId);
+  const recipientId = meta.senderId || sessionId;
+  const channel = meta.channel || 'WhatsApp';
+
+  if (channel.toLowerCase() !== 'whatsapp') {
+    return res.status(400).json({ error: 'Handover template is WhatsApp-only.' });
+  }
+
+  const { firstName, ip, username, password, planName, region, renewalDate } = req.body || {};
+  if (!firstName || !ip || !username || !password) {
+    return res.status(400).json({ error: 'firstName, ip, username and password are required.' });
+  }
+
+  const templateName = process.env.HANDOVER_TEMPLATE_NAME || 'pakcloudrdp_handover';
+  let dispatchResult;
+  try {
+    dispatchResult = await MetaMessagingService.sendWhatsAppTemplate(recipientId, {
+      templateName,
+      language: 'en',
+      components: [{
+        type: 'body',
+        parameters: [
+          { type: 'text', text: firstName },
+          { type: 'text', text: ip },
+          { type: 'text', text: username },
+          { type: 'text', text: password },
+          { type: 'text', text: planName || 'RDP' },
+          { type: 'text', text: region || '' },
+          { type: 'text', text: renewalDate || '' },
+        ],
+      }],
+    });
+  } catch (err) {
+    dispatchResult = { success: false, error: err.message };
+  }
+
+  if (dispatchResult.success) {
+    conversationStore.push(sessionId, {
+      sender: 'owner',
+      text: `[Handover "${templateName}" sent — ${ip} / ${username}]`,
+      timestamp: new Date().toISOString(),
+      channel,
+    }, { channel, contactName: meta.contactName, senderId: recipientId });
+  }
+
+  res.json({ success: true, templateName, dispatchResult });
+});
+
 /**
  * Correct an AI-generated message: overwrite its text in the thread and resend
  * the corrected text to the customer. Returns 404 if the message isn't found.

@@ -16,15 +16,26 @@ export const KNOWLEDGE_BASE = {
 
   whatWeSell: {
     summary: 'Managed Windows RDP. Every customer gets their OWN dedicated machine and 100% dedicated private IP.',
+    os: 'Windows 10 / Windows 11 / Windows Server (Installed with full Windows desktop GUI and full Administrator access).',
+    devicesSupported: 'Connectable from Windows PC (Remote Desktop Connection), Mac (Microsoft Remote Desktop), Android (RD Client), and iPhone/iPad (RD Client).',
+    setupSupport: 'Beginner-friendly! Complete step-by-step connection guide provided, and support team assists with setup.',
+    adminAccess: '100% Full Administrator (Root) access. Customers can install any legal software, Chrome, tools, and browsers.',
     features: [
       '✅ OWN dedicated machine',
       '✅ 100% dedicated private IP',
       '✅ Dedicated username + password',
-      '✅ Full Windows desktop access',
-      '✅ Setup + management included',
-      '✅ 1 Gbps uplink',
-      '✅ Unmetered bandwidth',
-      '✅ Windows installed via our proprietary method'
+      '✅ Full Windows desktop access (Windows 10/11)',
+      '✅ Full Administrator / Root rights',
+      '✅ Setup + management included (Beginner friendly)',
+      '✅ 1 Gbps uplink & unmetered bandwidth',
+      '✅ Connect from PC, Mac, Android, iPhone'
+    ],
+    popularUseCases: [
+      '🛒 E-commerce & Accounts: eBay, Amazon, Etsy, Vinted, PayPal, Stripe, Shopify',
+      '💼 Freelancing: Upwork, Fiverr, remote work',
+      '📈 Trading: MetaTrader 4 & 5 (MT4/MT5), Forex, Binance, crypto monitoring',
+      '▶️ Media & Browsing: YouTube watchtime, Chrome multi-profiles, SEO automation',
+      '⚡ 24/7 background tasks, file downloads/uploads'
     ],
     keyRule: 'One customer = One machine = One dedicated IP.'
   },
@@ -263,6 +274,9 @@ Title: *Muhammad Jawad Iqbal Khan*
 
 ⚠️ Payment k baad screenshot/receipt yahan zaroor share karein taake verification k baad RDP prepare ho sakay!`,
     longTermDiscount: `PakCloudRDP par standard pricing monthly basis par already lowest direct rates par fixed hai. Agar aap *3 Months, 6 Months ya 1 Year* ki advance payment ya multiple machines lena chahte hain, to hum aapka case Owner / Management ko escalate kar dete hain for special custom long-term package approval! Kindly batayein aapko kaunsa plan aur kitne months ke liye chahiye? 🤝`,
-    deliveryEta: `Working hours (9 AM – 12 AM PKT) mein payment owner verify hotay hi RDP *30 minutes* mein deliver ho jata hai! 🚀`
+    deliveryEta: `Working hours (9 AM – 12 AM PKT) mein payment owner verify hotay hi RDP *30 minutes* mein deliver ho jata hai! 🚀`,
+    beginnerSetup: `Jee bilkul bhai! Agar aap pehli dafa RDP le rahe hain toh bilkul tension na lein — hum aapko step-by-step complete guide provide karenge aur aapke phone ya PC par connect karwane mein poori madad karenge! 🤝`,
+    windowsVersion: `Hamari machines par *Windows 10 / Windows 11 / Windows Server* desktop setup hota hai jahan aapko normal Windows PC jaisa poora GUI desktop aur *100% Full Administrator (Root)* access milta hai. Aap Chrome, browsers, bots aur legal tools khud install kar sakte hain! 🖥️✨`,
+    ecommerceUseCases: `Jee bilkul! PakCloudRDP par har customer ko *100% Dedicated Private IP* milti hai jo eBay, Amazon, Etsy, Vinted, PayPal, Stripe aur freelancing accounts ke liye ideal hai kyunke IP kisi ke sath share nahi hoti. ✅`
   }
 };

@@ -95,6 +95,19 @@ db.exec(`
     day TEXT PRIMARY KEY,
     calls INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS broadcasts (
+    id TEXT PRIMARY KEY,
+    sessionId TEXT NOT NULL,
+    contactName TEXT NOT NULL DEFAULT '',
+    channel TEXT NOT NULL DEFAULT 'WhatsApp',
+    templateName TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    error TEXT NOT NULL DEFAULT '',
+    metaMessageId TEXT NOT NULL DEFAULT '',
+    sentAt TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_broadcasts_session ON broadcasts(sessionId, templateName);
 `);
 
 // --- Lightweight, idempotent migrations ---

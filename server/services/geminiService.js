@@ -15,11 +15,37 @@ import { db } from './db.js';
 import { bigPickleService } from './bigPickleService.js';
 import crypto from 'crypto';
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/' +
-  GEMINI_MODEL +
-  ':generateContent';
+// Cheap heuristic: detect a canned/pitched reply that must never be cached or
+// sent to a returning customer (poisoned-cache guard).
+const CANNED_MARKERS = [
+  'Jee bhai, main yahan hoon',
+  'main yahan hoon',
+  'Welcome to *PakCloudRDP*',
+  'I am here, how can i help'
+];
+const looksCanned = (text) => CANNED_MARKERS.some((m) => String(text).includes(m));
+
+// A customer-facing reply is "complete" unless it dies on a bare letter/digit.
+// Gemini sometimes stops mid-word under load, e.g. "...Humare pa" — a stub
+// ending on an ordinary alphanumeric is a cut reply and must never be cached or
+// sent. Punctuation, markdown closers, emoji, and URLs all count as closed.
+const endsComplete = (text) => {
+  const s = String(text).trimEnd();
+  if (!s) return false;
+  const tail = Array.from(s).at(-1);
+  return !/[A-Za-z0-9]/.test(tail);
+};
+
+// Primary model plus candidate fallbacks in priority order.
+// If the primary model hits free-tier quota limits (429) or overload (503),
+// the service automatically fails over to the next active candidate model.
+const CANDIDATE_MODELS = Array.from(new Set([
+  process.env.GEMINI_MODEL || 'gemini-flash-lite-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-2.5-flash'
+].filter(Boolean)));
 
 // Cost protection: cap Gemini fallback calls per day and cache identical queries.
 const DAILY_GEMINI_CAP = Number(process.env.GEMINI_DAILY_CAP || 60);
@@ -32,6 +58,50 @@ export class GeminiService {
 
   isConfigured() {
     return Boolean(this.key);
+  }
+
+  /**
+   * Execute generateContent request across candidate models with automatic failover.
+   * If a model returns 429 (quota/rate-limit), 503 (overloaded), or times out,
+   * it fails over to the next candidate model seamlessly.
+   */
+  async _callGeminiApi(payload) {
+    let lastStatus = null;
+    let lastError = null;
+
+    for (const model of CANDIDATE_MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(this.key)}`;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15000)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          return { ok: true, data, model };
+        }
+
+        lastStatus = res.status;
+        const errText = await res.text();
+        console.warn(`[Gemini] Model ${model} returned HTTP ${res.status}: ${errText.slice(0, 160)}`);
+
+        if (res.status === 429 || res.status === 503 || res.status >= 500) {
+          console.warn(`[Gemini] Failing over to next model after ${model} HTTP ${res.status}...`);
+          continue;
+        }
+
+        continue;
+      } catch (err) {
+        lastError = err.message;
+        console.warn(`[Gemini] Model ${model} call failed (${err.message}). Trying next candidate...`);
+      }
+    }
+
+    console.error(`[Gemini] All candidate models exhausted. Last status: ${lastStatus}, error: ${lastError}`);
+    return { ok: false, status: lastStatus || 500, error: lastError };
   }
 
   /**
@@ -90,8 +160,18 @@ export class GeminiService {
       priceLines,
       '',
       'PAYMENT: Monthly in advance, proof required. ONLY OWNER verifies payment. Methods: JazzCash/Raast/NayaPay 03014149031 and UBL A/C 300841314 (IBAN PK77UNIL0109000300841314), title Muhammad Jawad Iqbal Khan.',
-      'DELIVERY: ~30 minutes after owner confirms payment during working hours (9 AM - 12 AM PKT).',
-      'SUPPORT HOURS: 9 AM - 12 AM PKT daily; target <15 min response.',
+      'PAYMENT ACCOUNTS (share EXACTLY these when the customer is ready to pay): JazzCash/Raast/NayaPay 03014149031 (Muhammad Jawad Iqbal Khan); UBL A/C 300841314, IBAN PK77UNIL0109000300841314.',
+      'OPERATING SYSTEM: Windows 10 / Windows 11 / Windows Server with full standard Windows desktop GUI and 100% Administrator (root) rights. Customer can install any legal software, Chrome, tools, and browsers.',
+      'DEVICES SUPPORTED: Connectable from Windows PC (Remote Desktop Connection), Mac (Microsoft Remote Desktop app), Android phone (RD Client app), iPhone / iPad (RD Client app).',
+      'BEGINNER / FIRST-TIME BUYERS: We provide full step-by-step setup assistance. Never make a beginner feel lost; reassure them that we help connect their PC or mobile.',
+      'POPULAR USE-CASES (100% Dedicated Private IP): eBay, Amazon, Etsy, Vinted, PayPal, Stripe, Shopify, Upwork, Fiverr, YouTube watchtime, SEO, MetaTrader 4/5 (MT4/MT5), Forex, crypto, and 24/7 background tasks.',
+      'NETWORK SPEED: 1 Gbps uplink, unmetered bandwidth. Typical SUSTAINED speed: ~200-500 Mbps. Heavy sustained multi-TB transfers may be reviewed under the Fair Use Policy.',
+      'DELIVERY: ~30 minutes after owner confirms payment during working hours (9 AM - 12 AM PKT). Delivered package includes: Dedicated RDP IP Address, Username, Password, Basic Connection Instructions (Windows Remote Desktop / Mac / Mobile).',
+      'SUPPORT HOURS: 9 AM - 12 AM PKT daily; target <15 min response (max 12 hours off-hours).',
+      'SUPPORT SCOPE: included - RDP connectivity, password reset, basic troubleshooting. NOT included - custom software installation, advanced server configuration, OS customization (extra fee, escalate to owner).',
+      'MACHINE DOWN: tell the customer to contact WhatsApp +923394149031 for fastest priority response.',
+      'RENEWAL: monthly from activation date; automated reminder 3 days before expiry; RDP suspended automatically on expiry (no grace period); data preserved only during a 7-day suspension window, then the machine is wiped, IP released, data permanently lost.',
+      'MULTIPLE MACHINES: allowed; each has separate order, dedicated IP, credentials, billing cycle. No auto bulk discount.',
       'UPGRADE: anytime, pro-rated difference. DOWNGRADE: only at next renewal, no mid-cycle.',
       'IP CHANGE: 1 free per lifetime, then $5 each, within 24h, data NOT migrated.',
       'BACKUPS: customer responsible; PakCloudRDP does not provide backup service.',
@@ -117,13 +197,16 @@ export class GeminiService {
       (Object.values(byRegion) || []).forEach((amt) => allPrices.add(Number(amt)));
     });
 
-    // Extract PKR price-like numbers and flag any that are not in the KB set
-    const matches = String(text).match(/R?\s?([0-9]{3,6})\b/g) || [];
-    for (const m of matches) {
-      const num = Number(clean(m).replace('r', ''));
+    // Extract price-like numbers and flag any that are not in the KB set.
+    // Digit runs longer than 8 are phone / bank account / IBAN numbers (e.g.
+    // JazzCash 03014149031, UBL 300841314) and must NOT be treated as prices.
+    const runs = String(text).match(/\d+/g) || [];
+    for (const run of runs) {
+      if (run.length < 3 || run.length > 8) continue;
+      const num = Number(run);
       if (Number.isFinite(num) && num >= 1000) {
         if (!allPrices.has(num)) {
-          // A price that isn't the exact KB value -> out of scope
+          console.warn('[Gemini] KB validation rejected — invented price/long number:', run, '| text:', String(text).slice(0, 120));
           return false;
         }
       }
@@ -132,6 +215,7 @@ export class GeminiService {
     // Reject forbidden promises
     const lower = String(text).toLowerCase();
     if (/\b100% uptime\b|\bguarantee(d)? (refund|money back)\b|\bfree trial\b/.test(lower)) {
+      console.warn('[Gemini] KB validation rejected — forbidden promise | text:', String(text).slice(0, 120));
       return false;
     }
 
@@ -139,24 +223,74 @@ export class GeminiService {
   }
 
   /**
-   * Generate a KB-constrained reply.
+   * Generate a KB-constrained, context-aware reply.
+   * `history` is the customer's FULL prior conversation for this chat so the
+   * reply picks up where the conversation left off instead of answering the
+   * single inbound message in isolation.
    * Returns { ok, text, fallback } - on any failure/validation it returns a
    * safe fallback instead of hallucinated content.
    */
-  async generate(kb, userMessage, cannedFallback) {
-    if (!this.key) {
-      return { ok: false, text: cannedFallback, fallback: true, reason: 'no-key' };
-    }
-
+  async generate(kb, userMessage, cannedFallback, history = []) {
     const fallback = (reason) => ({ ok: false, text: cannedFallback, fallback: true, reason });
 
-    // ---- Caching: identical queries within TTL are served from cache (no API cost) ----
-    const q = (userMessage || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 300);
-    const cacheKey = crypto.createHash('sha256').update(q).digest('hex');
+    // When Gemini itself fails (quota 429, daily cap, HTTP error, validation,
+    // empty, no key), transparently fall back to the configured big-pickle
+    // models and then OpenRouter free models so customers still get a warm,
+    // context-aware AI reply instead of the generic canned text. The result is
+    // still validated against the KB.
+    let cacheKey = null;
+    let backupResult = null;
+    const backupReply = async (reason) => {
+      if (backupResult) return backupResult;
+      try {
+        // 1) opencode free models
+        if (bigPickleService.isConfigured()) {
+          const bp = await bigPickleService.generateCustomerReply(kb, userMessage, history);
+          if (bp && bp.text) {
+            backupResult = { ok: true, text: bp.text.trim(), fallback: true, source: 'big-pickle', reason: 'gemini-' + reason, kbValidated: true };
+            if (this.validateAgainstKB(backupResult.text, kb)) return this._cacheBackup(cacheKey, backupResult);
+            console.warn('[Gemini] big-pickle reply failed KB validation, trying next provider.');
+          }
+        }
+      } catch (err) {
+        console.warn('[Gemini] backup AI customer reply error:', err.message);
+      }
+      backupResult = fallback(reason);
+      return backupResult;
+    };
+
+    if (!this.key) {
+      return await backupReply('no-key');
+    }
+
+    // Build a readable transcript of the full conversation (oldest -> newest).
+    // The current inbound message IS already part of `history` for the
+    // webhook/chat paths (it is persisted before the agent runs).
+    const transcript = (history || [])
+      .map((m) => {
+        const who = m.sender === 'user' ? 'CUSTOMER' : (m.sender === 'agent' ? 'ASSISTANT' : 'OWNER');
+        return who + ': ' + (m.text || '');
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    // ---- Caching: identical query + identical history within TTL are served
+    // from cache, so repeated reads never cost money. ----
+    // NOTE: the key is built from the TAIL of the transcript (-4000), not the
+    // head. Growing chats otherwise freeze the head at the same 4000 chars and
+    // every new message collides with the same key -> stale identical replies.
+    const cacheInput = (((userMessage || '') + '||' + transcript).trim().toLowerCase().replace(/\s+/g, ' ')).slice(-4000);
+    cacheKey = crypto.createHash('sha256').update(cacheInput).digest('hex');
     const cached = db.prepare('SELECT answer, createdAt FROM gemini_cache WHERE query_hash = ?').get(cacheKey);
     if (cached) {
       const age = Date.now() - new Date(cached.createdAt).getTime();
-      if (age < CACHE_TTL_MS && cached.answer) {
+      if (age < CACHE_TTL_MS && cached.answer && looksCanned(cached.answer)) {
+        // Poisoned entry (a canned greeting mirroring historical transcripts was
+        // cached). Delete it and treat the query as a cache miss so the AI chain
+        // regenerates a real reply.
+        db.prepare('DELETE FROM gemini_cache WHERE query_hash = ?').run(cacheKey);
+        console.warn('[Gemini] Discarded canned cache entry for', cacheKey);
+      } else if (age < CACHE_TTL_MS && cached.answer) {
         return { ok: true, text: cached.answer, fallback: false, cached: true };
       }
     }
@@ -164,62 +298,89 @@ export class GeminiService {
     // ---- Daily budget cap ----
     if (!this._meterCall()) {
       console.warn('[Gemini] Daily call cap reached, using fallback.');
-      return fallback('daily-cap');
+      return await backupReply('daily-cap');
     }
 
     const systemPrompt =
-      'You are the official customer-support assistant for PakCloudRDP, a managed dedicated ' +
-      'Windows RDP provider. You must answer ONLY using the facts in the CONTEXT below. ' +
-      'HARD RULES: 1) Never invent or guess any price, RAM, CPU, storage, region, policy, feature, ' +
-      'or availability. 2) Quoting any price? Use the EXACT PKR figures from the CONTEXT. ' +
-      '3) Never promise refunds, discounts, free trials, or 100% uptime - instead say such requests ' +
-      'are handled by the owner/management. 4) If a question is outside the CONTEXT (e.g. custom pricing, ' +
-      'unlisted locations, legal advice, unrelated topics), do NOT answer with made-up info. Instead reply ' +
-      'that this is beyond scope and that you will escalate the request to the owner. ' +
-      '5) Keep it concise and helpful. Respond in the customer\'s language (Roman Urdu / English / mixed).';
+      'You are PakCloudRDP\'s customer-support assistant on WhatsApp, and you reply like a real, ' +
+      'friendly human agent \u2014 warm, personal, and genuinely helpful. Never sound robotic or templated, ' +
+      'and never reuse a fixed greeting. Read the customer\'s PREVIOUS CONVERSATION first and continue ' +
+      'exactly where it left off, as if you are the same person they have been talking to.\n\n' +
+      'STYLE GUIDE \u2014 aim for this voice (short, warm, natural Roman Urdu / English mix, WhatsApp *bold* ' +
+      'formatting, minimal emojis, like a shop owner talking to a customer):\n' +
+      '- Start directly on their question; only greet if it is genuinely the first message.\n' +
+      '- If they seem frustrated or annoyed, apologise simply and reassure them, then move on.\n' +
+      '- Fully answer their real concern: confirm availability, explain price/region differences from the ' +
+      'CONTEXT, clear doubts about trust, delivery, or specs.\n' +
+      '- Drive the sale forward: once they pick a plan/region or say they want to buy, confirm the exact ' +
+      'package and price and confidently hand them the next step (the payment details, or ask for the ' +
+      'payment screenshot if they already paid).\n\n' +
+      'HARD RULES (never break):\n' +
+      '1) Use ONLY facts (prices, specs, regions, policies) from the CONTEXT. Never invent or guess. ' +
+      'Quoting any price? Use the EXACT PKR figures from the CONTEXT.\n' +
+      '2) Never promise refunds, discounts, free trials, or 100% uptime \u2014 direct such requests to the ' +
+      'owner/management.\n' +
+      '3) Out-of-scope questions (custom pricing, unlisted locations, legal, unrelated): do not make up ' +
+      'info \u2014 say it will be escalated to the owner.\n' +
+      '4) Concise but complete: a short warm paragraph or 3-5 short lines.\n' +
+      '5) Reply in the customer\'s language (Roman Urdu / English / mixed).\n' +
+      '6) Use the PREVIOUS CONVERSATION as memory: remember the plan/region already quoted, whether they ' +
+      'already got a price or said they would pay, and DO NOT repeat what was already answered. Continue ' +
+      'the conversation naturally from where it stopped.';
 
     const userPrompt =
       'CONTEXT (single source of truth - use this ONLY):\n' +
       '------------------------------\n' +
       this.buildContext(kb) +
       '\n------------------------------\n' +
-      'CUSTOMER MESSAGE:\n' +
+      (transcript
+        ? 'PREVIOUS CONVERSATION WITH THIS CUSTOMER (oldest to newest):\n' +
+          transcript +
+          '\n------------------------------\n'
+        : '') +
+      'LATEST CUSTOMER MESSAGE:\n' +
       userMessage;
 
     try {
-      const res = await fetch(
-        GEMINI_URL + '?key=' + encodeURIComponent(this.key),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 500
-            }
-          })
+      const apiRes = await this._callGeminiApi({
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 500
         }
-      );
+      });
 
-      if (!res.ok) {
-        const body = await res.text();
-        console.error('[Gemini] HTTP', res.status, body.slice(0, 300));
-        return fallback('http-' + res.status);
+      if (!apiRes.ok) {
+        console.error('[Gemini] All candidate models failed:', apiRes.status, apiRes.error);
+        return await backupReply('http-' + apiRes.status);
       }
 
-      const data = await res.json();
+      const data = apiRes.data;
       const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
+      const finishReason = data?.candidates?.[0]?.finishReason;
 
       if (!text.trim()) {
-        return fallback('empty');
+        return await backupReply('empty');
+      }
+
+      // A stopped-before-finishing completion (token cap, safety cut, or the
+      // upstream being degraded) must NEVER reach the customer or the cache.
+      // Truncated gems like "...Humare pa" slip past KB validation because
+      // they invent/omit nothing — the sentence just dies mid-word.
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn('[Gemini] Truncated completion (finishReason=' + finishReason + '), using fallback.');
+        return await backupReply('truncated-' + finishReason);
+      }
+      if (!endsComplete(text)) {
+        console.warn('[Gemini] Incomplete reply detected, using fallback.');
+        return await backupReply('incomplete');
       }
 
       if (!this.validateAgainstKB(text, kb)) {
         console.warn('[Gemini] Response failed KB validation, using fallback.');
-        return fallback('validation');
+        return await backupReply('validation');
       }
 
       // Cache the valid answer so the same query never costs money again
@@ -231,7 +392,7 @@ export class GeminiService {
       return { ok: true, text: trimmed, fallback: false };
     } catch (err) {
       console.error('[Gemini] Error:', err.message);
-      return fallback('error');
+      return await backupReply('error');
     }
   }
   /**
@@ -268,7 +429,7 @@ export class GeminiService {
     }
 
     // Two-line cache: identical full transcripts within TTL never cost money.
-    const cacheInput = transcript.trim().slice(0, 4000);
+    const cacheInput = transcript.trim().slice(-4000);
     const cacheKey = crypto.createHash('sha256').update(cacheInput).digest('hex');
     const cached = db.prepare('SELECT answer, createdAt FROM gemini_cache WHERE query_hash = ?').get(cacheKey);
     if (cached) {
@@ -306,21 +467,17 @@ export class GeminiService {
       (transcript || '(empty)');
 
     try {
-      const res = await fetch(GEMINI_URL + '?key=' + encodeURIComponent(this.key), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 700 }
-        })
+      const apiRes = await this._callGeminiApi({
+        contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 700 }
       });
 
-      if (!res.ok) {
-        console.error('[Gemini] Analyze HTTP', res.status);
+      if (!apiRes.ok) {
+        console.error('[Gemini] Analyze HTTP candidate failover exhausted:', apiRes.status);
         return await this._bigPickleOrFallback(kb, history, fallback);
       }
 
-      const data = await res.json();
+      const data = apiRes.data;
       const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
       const parsed = this._parseAnalysis(text);
       if (!parsed) {
@@ -521,6 +678,26 @@ export class GeminiService {
       'Acknowledge their message and confirm the next step (quote, order, or support).',
       'Ask a clarifying question to understand which plan/region they are interested in.'
     ];
+  }
+
+  /**
+   * Persist a validated backup-AI reply in the same cache used by Gemini so
+   * identical queries never get re-generated (or re-billed).
+   */
+  _cacheBackup(cacheKey, result) {
+    if (cacheKey) {
+      try {
+        if (!looksCanned(result.text)) {
+          db.prepare('INSERT OR REPLACE INTO gemini_cache (query_hash, answer, createdAt) VALUES (?, ?, ?)')
+            .run(cacheKey, result.text, new Date().toISOString());
+        } else {
+          console.warn('[Gemini] Skipped caching canned backup reply.');
+        }
+      } catch (err) {
+        console.warn('[Gemini] Could not cache backup reply:', err.message);
+      }
+    }
+    return result;
   }
 
   /**
