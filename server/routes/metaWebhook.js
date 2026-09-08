@@ -8,6 +8,8 @@ import { webhookLogStore } from '../services/webhookLogStore.js';
 import { conversationStore } from '../services/conversationStore.js';
 import { verifyWebhookSignature, isDuplicateEvent } from '../services/webhookSecurity.js';
 import { enqueue } from '../services/messageQueue.js';
+import { ownerAlertService, OWNER_PHONE } from '../services/ownerAlertService.js';
+import { MetaMessagingService } from '../services/metaMessagingService.js';
 
 const router = express.Router();
 
@@ -129,6 +131,59 @@ router.post('/', async (req, res) => {
             }
 
             console.log(`[WhatsApp Inbound] From ${senderName} (${senderPhone}): "${textContent}"`);
+
+            // ── OWNER REPLY ROUTING ─────────────────────────────────────────
+            // If this message is from the owner's personal number, treat it as
+            // a manual reply to a customer escalation — never pass to the AI.
+            if (ownerAlertService.isOwner(senderPhone)) {
+              console.log(`[OwnerAlert] Received reply from owner (${senderPhone}): "${textContent}"`);
+
+              // Try to find the customer by quoted message context first,
+              // fall back to oldest open alert.
+              const contextId = messageObj.context?.id || null;
+              let alert = ownerAlertService.findByWaMessageId(contextId);
+              if (!alert) alert = ownerAlertService.findOldestOpen();
+
+              if (!alert) {
+                // No open escalation found — confirm to owner
+                await MetaMessagingService.sendWhatsAppMessage(senderPhone,
+                  '⚠️ No open escalations found. This message was not forwarded to any customer.');
+                continue;
+              }
+
+              // Forward owner's message to the customer
+              let forwarded = false;
+              try {
+                const fwdResult = await MetaMessagingService.dispatch(
+                  alert.channel, alert.customerId, textContent
+                );
+                forwarded = Boolean(fwdResult?.success);
+              } catch (err) {
+                console.error('[OwnerAlert] Forward to customer failed:', err.message);
+              }
+
+              // Record owner reply in customer's conversation history
+              conversationStore.push(alert.customerId, {
+                sender: 'agent',
+                text: textContent,
+                intent: 'OWNER_MANUAL_REPLY',
+                timestamp: new Date().toISOString(),
+                deliveryStatus: forwarded ? 'delivered' : 'failed'
+              }, { channel: alert.channel, contactName: alert.customerName, senderId: alert.customerId });
+
+              // Mark alert resolved
+              ownerAlertService.markReplied(alert.id);
+
+              // Confirm delivery back to owner
+              const confirmMsg = forwarded
+                ? `✅ Delivered to *${alert.customerName}* (${alert.channel})`
+                : `❌ Could not deliver to *${alert.customerName}* — check dashboard.`;
+              await MetaMessagingService.sendWhatsAppMessage(senderPhone, confirmMsg);
+
+              console.log(`[OwnerAlert] Owner reply forwarded to ${alert.customerId} (${alert.channel}). forwarded=${forwarded}`);
+              continue; // Do NOT pass owner messages to the AI
+            }
+            // ── END OWNER REPLY ROUTING ─────────────────────────────────────
 
             // Handle paused chats inline (just record, no reply) - cheap.
             if (conversationStore.isAiPaused(senderPhone)) {

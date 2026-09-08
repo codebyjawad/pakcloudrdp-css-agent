@@ -16,6 +16,7 @@ import { webhookLogStore } from './webhookLogStore.js';
 import { conversationStore } from './conversationStore.js';
 import { cssAgent } from '../agents/cssAgent.js';
 import { MetaMessagingService } from './metaMessagingService.js';
+import { ownerAlertService } from './ownerAlertService.js';
 
 const CONCURRENCY = Number(process.env.MSG_QUEUE_CONCURRENCY || 2);
 
@@ -154,6 +155,32 @@ async function processTask(task) {
   if (!String(agentResult.replyText || '').trim()) {
     console.log(`[${channel}] Empty reply (${agentResult.intent}) for ${senderId} — not sending.`);
     return;
+  }
+
+  // Fire owner alert if the agent flagged an escalation (non-blocking).
+  if (agentResult.escalation && agentResult.escalation !== '') {
+    const esc = typeof agentResult.escalation === 'string'
+      ? (() => { try { return JSON.parse(agentResult.escalation); } catch { return {}; } })()
+      : agentResult.escalation;
+
+    // Fetch the last 3 conversation turns for context in the alert
+    let lastMessages = [{ sender: 'user', text: processText }];
+    try {
+      const conv = conversationStore.get(senderId);
+      if (Array.isArray(conv) && conv.length) {
+        lastMessages = conv.slice(-3).map((m) => ({ sender: m.sender, text: m.text }));
+      }
+    } catch {}
+
+    ownerAlertService.notify({
+      customerId: senderId,
+      customerName: resolvedName,
+      channel,
+      escalationType: esc.type || 'ESCALATION',
+      reason: esc.reason || esc.actionRequired || '',
+      lastMessage: processText,
+      lastMessages
+    }).catch((err) => console.error('[OwnerAlert] notify() failed:', err.message));
   }
 
   const send = async () => {
