@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, Server, Globe, Cpu, HardDrive, Shield, Eye, X } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  Server,
+  Cpu,
+  HardDrive,
+  Shield,
+  Eye,
+  X,
+  Table as TableIcon,
+  LayoutGrid,
+  Zap
+} from 'lucide-react';
 import { api } from '../services/api';
 
 const REGIONS = [
@@ -13,9 +25,7 @@ const REGIONS = [
   { id: 'global', name: 'All Regions', flag: '🌍' }
 ];
 
-// Universal clipboard copy that works across all protocols and mobile browsers
 function copyTextToClipboard(text) {
-  // Method 1: execCommand with un-hidden textarea (100% reliable across HTTP/HTTPS and mobile)
   try {
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -39,12 +49,10 @@ function copyTextToClipboard(text) {
     console.warn('execCommand failed, trying navigator.clipboard:', err);
   }
 
-  // Method 2: Modern Clipboard API
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).catch((e) => console.warn('Clipboard writeText failed:', e));
     return true;
   }
-
   return false;
 }
 
@@ -56,6 +64,7 @@ export default function PlansView() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [previewText, setPreviewText] = useState(null);
+  const [viewLayout, setViewLayout] = useState('table'); // Default to comparison table
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,7 +79,6 @@ export default function PlansView() {
 
   const currentRegionObj = REGIONS.find((r) => r.id === selectedRegion) || REGIONS[0];
 
-  // Helper to get real price for plan & region
   const getPrice = (planId, regionId) => {
     const r = (regionId || 'us').toLowerCase();
     const matrixRegion = r === 'global' ? 'eu' : r;
@@ -98,7 +106,6 @@ export default function PlansView() {
       `• Payments: JazzCash, Raast, NayaPay, UBL Bank Transfer`;
   };
 
-  // Copy single plan quote
   const copyPlanDetails = (plan) => {
     const text = getSinglePlanText(plan);
     copyTextToClipboard(text);
@@ -107,7 +114,6 @@ export default function PlansView() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Generate ALL plans quote text
   const getAllPlansText = () => {
     let text = `💵 *PAKCLOUDRDP — COMPLETE PRICE & SPECS LIST (${currentRegionObj.flag} ${currentRegionObj.name})*\n` +
       `*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port · Unmetered)*\n` +
@@ -131,7 +137,6 @@ export default function PlansView() {
     return text;
   };
 
-  // Copy ALL plans formatted for a specific region
   const copyAllPlansForRegion = () => {
     if (!plans.length) return;
     const text = getAllPlansText();
@@ -142,244 +147,253 @@ export default function PlansView() {
   };
 
   if (loading) {
-    return <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading pricing matrix...</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading pricing matrix...</div>;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', position: 'relative' }}>
-      {/* FLOATING SUCCESS TOAST */}
+    <div className="plans-page-container">
+      {/* Toast Notification */}
       {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          background: '#064e3b',
-          border: '1px solid var(--emerald)',
-          color: '#fff',
-          padding: '12px 20px',
-          borderRadius: 'var(--radius-md)',
-          boxShadow: '0 8px 25px rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          zIndex: 100,
-          fontWeight: 600,
-          fontSize: '13.5px',
-          animation: 'pop-in 0.2s ease-out'
-        }}>
-          <Check size={18} color="var(--emerald)" />
-          {toastMessage}
+        <div className="plans-toast" role="status" aria-live="polite">
+          <Check size={18} color="var(--emerald)" aria-hidden="true" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* TEXT PREVIEW MODAL */}
+      {/* Quote Preview Modal */}
       {previewText && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.75)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99,
-          padding: 20
-        }}>
-          <div style={{
-            background: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--border-medium)',
-            borderRadius: 'var(--radius-xl)',
-            width: '100%',
-            maxWidth: '560px',
-            padding: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>
-                Formatted Plan Quote
-              </h3>
+        <div className="preview-modal-overlay">
+          <div className="preview-modal-card" role="dialog" aria-modal="true" aria-label="Formatted WhatsApp Quote Preview">
+            <div className="preview-modal-header">
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#fff' }}>Formatted Customer Quote ({currentRegionObj.name})</h3>
               <button
+                type="button"
                 className="icon-btn"
                 onClick={() => setPreviewText(null)}
+                aria-label="Close quote preview"
               >
-                <X size={16} />
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
-
             <textarea
               readOnly
+              className="preview-textarea"
               value={previewText}
-              onFocus={(e) => e.target.select()}
               rows={12}
-              style={{
-                width: '100%',
-                background: 'rgba(0,0,0,0.4)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: '#fff',
-                padding: 14,
-                fontFamily: 'inherit',
-                fontSize: '13px',
-                lineHeight: 1.5,
-                resize: 'none'
-              }}
+              aria-label="Preview text content"
             />
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
+                type="button"
                 className="btn-primary"
                 onClick={() => {
                   copyTextToClipboard(previewText);
-                  showToast('✅ Copied to clipboard!');
+                  showToast('✅ Copied quote text!');
                   setPreviewText(null);
                 }}
+                aria-label="Copy previewed quote"
               >
-                <Copy size={16} />
-                Copy to Clipboard
-              </button>
-              <button
-                className="btn-primary"
-                style={{ background: 'rgba(255,255,255,0.06)', boxShadow: 'none' }}
-                onClick={() => setPreviewText(null)}
-              >
-                Close
+                <Copy size={15} aria-hidden="true" />
+                <span>Copy & Close</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TOP REGION SELECTOR BAR & BATCH COPY */}
-      <div style={{
-        padding: '20px 24px',
-        background: 'var(--bg-surface-elevated)',
-        borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Select Region for Customer Quote:
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {/* Control Bar: Region Selection & Action Buttons */}
+      <div className="plans-control-bar">
+        <div className="region-selector-block">
+          <span className="region-label">Region for Customer Quote:</span>
+          <div className="region-pills-wrap" role="group" aria-label="Select pricing region">
             {REGIONS.map((r) => (
               <button
                 key={r.id}
-                className={`filter-pill ${selectedRegion === r.id ? 'active' : ''}`}
-                style={{ fontSize: '12px', padding: '6px 12px' }}
+                type="button"
+                className={`region-pill ${selectedRegion === r.id ? 'active' : ''}`}
                 onClick={() => setSelectedRegion(r.id)}
+                aria-label={`Select ${r.name} pricing region`}
               >
-                <span>{r.flag}</span>
+                <span aria-hidden="true">{r.flag}</span>
                 <span>{r.name}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Action Buttons: Copy All + Preview Text */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="plans-action-controls">
+          {/* Layout View Toggle (Comparison Table vs Cards) */}
+          <div className="layout-toggle-group" role="group" aria-label="Toggle layout view">
+            <button
+              type="button"
+              className={`layout-toggle-btn ${viewLayout === 'table' ? 'active' : ''}`}
+              onClick={() => setViewLayout('table')}
+              title="Comparison Table View"
+              aria-label="Switch to Comparison Table View"
+            >
+              <TableIcon size={15} aria-hidden="true" />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              className={`layout-toggle-btn ${viewLayout === 'cards' ? 'active' : ''}`}
+              onClick={() => setViewLayout('cards')}
+              title="Card Grid View"
+              aria-label="Switch to Card Grid View"
+            >
+              <LayoutGrid size={15} aria-hidden="true" />
+              <span>Cards</span>
+            </button>
+          </div>
+
           <button
-            className="icon-btn"
-            style={{ width: 'auto', padding: '0 14px', gap: 6, fontSize: '12px', height: '40px' }}
-            title="Preview formatted text"
+            type="button"
+            className="icon-btn text-preview-btn"
+            title="Preview formatted text quote"
+            aria-label="Preview formatted text quote"
             onClick={() => setPreviewText(getAllPlansText())}
           >
-            <Eye size={15} />
-            <span>View Text</span>
+            <Eye size={15} aria-hidden="true" />
+            <span>Preview Text</span>
           </button>
 
           <button
-            className="btn-primary"
-            style={{
-              background: copiedAll ? 'var(--emerald)' : 'var(--accent-primary)',
-              padding: '10px 20px',
-              fontSize: '13.5px',
-              height: '40px',
-              boxShadow: copiedAll ? '0 4px 15px rgba(16,185,129,0.4)' : '0 4px 15px var(--accent-primary-glow)'
-            }}
+            type="button"
+            className="btn-primary copy-all-btn"
             onClick={copyAllPlansForRegion}
+            aria-label={`Copy all plans for ${currentRegionObj.name}`}
           >
-            {copiedAll ? <Check size={18} /> : <Copy size={18} />}
-            <span>
-              {copiedAll
-                ? `Copied All Plans for ${currentRegionObj.name}!`
-                : `Copy All Plans (${currentRegionObj.flag} ${currentRegionObj.name})`}
-            </span>
+            {copiedAll ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+            <span>{copiedAll ? 'Copied All Plans!' : `Copy All (${currentRegionObj.flag})`}</span>
           </button>
         </div>
       </div>
 
-      {/* INDIVIDUAL PLAN CARDS GRID */}
-      <div className="pricing-grid">
-        {plans.map((plan) => {
-          const isFeatured = plan.id === 'starter';
-          const isCopied = copiedId === plan.id;
-          const price = getPrice(plan.id, selectedRegion);
+      {/* COMPARISON TABLE VIEW (Solves the awkward 5+2 orphan card row) */}
+      {viewLayout === 'table' ? (
+        <div className="plans-table-wrapper" role="region" aria-label="Plans comparison table">
+          <table className="plans-comparison-table">
+            <thead>
+              <tr>
+                <th>Plan Name</th>
+                <th>vCPU</th>
+                <th>RAM</th>
+                <th>Storage</th>
+                <th>IP Type</th>
+                <th>Port Uplink</th>
+                <th>Price / mo ({currentRegionObj.id.toUpperCase()})</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map((plan) => {
+                const isFeatured = plan.id === 'starter';
+                const isCopied = copiedId === plan.id;
+                const price = getPrice(plan.id, selectedRegion);
 
-          return (
-            <div key={plan.id} className={`plan-card ${isFeatured ? 'featured' : ''}`}>
-              {isFeatured && <span className="plan-badge">⭐ Most Popular</span>}
+                return (
+                  <tr key={plan.id} className={isFeatured ? 'featured-plan-row' : ''}>
+                    <td>
+                      <div className="table-plan-cell">
+                        <strong className="table-plan-name">{plan.name}</strong>
+                        {isFeatured && (
+                          <span className="featured-pill-badge" title="Most popular customer plan">
+                            <Zap size={11} aria-hidden="true" /> Most Popular
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="spec-val"><Cpu size={13} color="var(--text-muted)" aria-hidden="true" /> {plan.vcpu || plan.cpu}</span>
+                    </td>
+                    <td>
+                      <span className="spec-val"><Server size={13} color="var(--text-muted)" aria-hidden="true" /> {plan.ram}</span>
+                    </td>
+                    <td>
+                      <span className="spec-val"><HardDrive size={13} color="var(--text-muted)" aria-hidden="true" /> {plan.nvme || plan.storage}</span>
+                    </td>
+                    <td>
+                      <span className="spec-val"><Shield size={13} color="var(--text-muted)" aria-hidden="true" /> Dedicated Private</span>
+                    </td>
+                    <td>
+                      <span className="spec-val">1 Gbps Unmetered</span>
+                    </td>
+                    <td>
+                      <span className={`table-plan-price ${isFeatured ? 'featured-price' : ''}`}>
+                        ₨{price.toLocaleString()}
+                        <small>/mo</small>
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className={`table-copy-btn ${isCopied ? 'copied' : ''}`}
+                        onClick={() => copyPlanDetails(plan)}
+                        aria-label={`Copy quote for ${plan.name} plan`}
+                      >
+                        {isCopied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                        <span>{isCopied ? 'Copied!' : 'Copy quote'}</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        /* OPTIONAL CARD VIEW: Clean, standardized colors */
+        <div className="pricing-grid">
+          {plans.map((plan) => {
+            const isFeatured = plan.id === 'starter';
+            const isCopied = copiedId === plan.id;
+            const price = getPrice(plan.id, selectedRegion);
 
-              <div>
-                <h3 className="plan-name">{plan.name}</h3>
-                <div className="plan-price">
-                  ₨{price.toLocaleString()}
-                  <span>/ month</span>
+            return (
+              <div key={plan.id} className={`plan-card ${isFeatured ? 'featured' : ''}`}>
+                {isFeatured && <span className="plan-badge">⭐ Most Popular</span>}
+
+                <div>
+                  <h3 className="plan-name">{plan.name}</h3>
+                  <div className={`plan-price ${isFeatured ? 'featured-price' : 'standard-price'}`}>
+                    ₨{price.toLocaleString()}
+                    <span>/ month</span>
+                  </div>
                 </div>
+
+                <div className="plan-specs">
+                  <div className="spec-row">
+                    <span><Cpu size={14} color="var(--text-muted)" aria-hidden="true" /> vCPU</span>
+                    <strong>{plan.vcpu || plan.cpu}</strong>
+                  </div>
+                  <div className="spec-row">
+                    <span><Server size={14} color="var(--text-muted)" aria-hidden="true" /> RAM</span>
+                    <strong>{plan.ram}</strong>
+                  </div>
+                  <div className="spec-row">
+                    <span><HardDrive size={14} color="var(--text-muted)" aria-hidden="true" /> Storage</span>
+                    <strong>{plan.nvme || plan.storage}</strong>
+                  </div>
+                  <div className="spec-row">
+                    <span><Shield size={14} color="var(--text-muted)" aria-hidden="true" /> Dedicated IP</span>
+                    <strong>Private Dedicated</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="copy-plan-btn"
+                  onClick={() => copyPlanDetails(plan)}
+                  aria-label={`Copy quote for ${plan.name}`}
+                >
+                  {isCopied ? <Check size={16} color="var(--emerald)" aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+                  <span>{isCopied ? 'Copied!' : 'Copy quote'}</span>
+                </button>
               </div>
-
-              <div className="plan-specs">
-                <div className="spec-row">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Cpu size={14} color="var(--sky)" /> vCPU
-                  </span>
-                  <strong>{plan.vcpu || plan.cpu}</strong>
-                </div>
-                <div className="spec-row">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Server size={14} color="var(--accent-primary)" /> RAM
-                  </span>
-                  <strong>{plan.ram}</strong>
-                </div>
-                <div className="spec-row">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <HardDrive size={14} color="var(--emerald)" /> Storage
-                  </span>
-                  <strong>{plan.nvme || plan.storage}</strong>
-                </div>
-                <div className="spec-row">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Shield size={14} color="var(--amber)" /> IP Type
-                  </span>
-                  <strong>Dedicated Private IP</strong>
-                </div>
-                <div className="spec-row">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Globe size={14} color="var(--msg-color)" /> Selected Region
-                  </span>
-                  <strong>{currentRegionObj.flag} {currentRegionObj.name}</strong>
-                </div>
-              </div>
-
-              <button
-                className="copy-plan-btn"
-                onClick={() => copyPlanDetails(plan)}
-              >
-                {isCopied ? <Check size={16} color="var(--emerald)" /> : <Copy size={16} />}
-                <span>{isCopied ? `Copied ${plan.name} (${currentRegionObj.id.toUpperCase()})!` : `Copy ${plan.name} Quote`}</span>
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

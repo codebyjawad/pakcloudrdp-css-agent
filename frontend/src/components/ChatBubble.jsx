@@ -1,7 +1,7 @@
 import React from 'react';
-import { Bot, User, ShieldAlert, CheckCheck, Clock, AlertCircle } from 'lucide-react';
+import { Bot, User, ShieldAlert, CheckCheck, Clock, AlertCircle, RotateCw } from 'lucide-react';
 
-export default function ChatBubble({ message }) {
+export default function ChatBubble({ message, onRetry }) {
   const isUser = message.sender === 'user';
   const isAgent = message.sender === 'agent';
   const isOwner = message.sender === 'owner';
@@ -19,12 +19,12 @@ export default function ChatBubble({ message }) {
   };
 
   return (
-    <div className={`message-row ${message.sender}`}>
+    <div className={`message-row ${message.sender} ${isFailed ? 'has-delivery-failure' : ''}`}>
       {/* Sender Identifier */}
       <div className="message-sender-tag">
-        {isUser && <User size={12} />}
-        {isAgent && <Bot size={12} />}
-        {isOwner && <ShieldAlert size={12} />}
+        {isUser && <User size={12} aria-hidden="true" />}
+        {isAgent && <Bot size={12} aria-hidden="true" />}
+        {isOwner && <ShieldAlert size={12} aria-hidden="true" />}
         <span>
           {isUser && 'Customer'}
           {isAgent && 'AI Agent'}
@@ -33,24 +33,32 @@ export default function ChatBubble({ message }) {
       </div>
 
       {/* Bubble Content */}
-      <div className={`message-bubble ${isFailed ? 'failed-bubble' : ''}`} style={isFailed ? { border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.08)' } : {}}>
+      <div className={`message-bubble ${isFailed ? 'failed-bubble' : ''}`}>
         <div style={{ whiteSpace: 'pre-wrap' }}>{message.text}</div>
 
-        {/* Failed Delivery Notice */}
+        {/* Prominent Failed Delivery Notice & Retry Affordance */}
         {isFailed && (
-          <div style={{
-            marginTop: '8px',
-            paddingTop: '6px',
-            borderTop: '1px dashed rgba(239, 68, 68, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '11px',
-            color: '#f87171',
-            fontWeight: 500
-          }}>
-            <AlertCircle size={13} style={{ flexShrink: 0 }} />
-            <span>Delivery Failed: {message.deliveryError || 'Meta delivery error'}</span>
+          <div className="delivery-failure-box">
+            <div className="delivery-failure-details">
+              <AlertCircle size={14} className="failure-icon" aria-hidden="true" />
+              <div className="failure-text">
+                <strong>Delivery Failed:</strong>
+                <span>{message.deliveryError || 'Meta Graph API rejection (OAuth or Network error)'}</span>
+              </div>
+            </div>
+
+            {onRetry && (
+              <button
+                type="button"
+                className="retry-dispatch-btn"
+                onClick={() => onRetry(message)}
+                aria-label={`Retry sending message: ${message.text?.slice(0, 30)}`}
+                title="Retry delivering this message to the customer"
+              >
+                <RotateCw size={12} aria-hidden="true" />
+                <span>Retry</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -65,9 +73,17 @@ export default function ChatBubble({ message }) {
         <span>{formatTime(message.timestamp)}</span>
         {(isAgent || isOwner) && (
           <>
-            {isFailed && <AlertCircle size={13} style={{ color: '#ef4444' }} title={message.deliveryError || 'Delivery Failed'} />}
-            {isSending && <Clock size={13} style={{ opacity: 0.7 }} title="Sending..." />}
-            {!isFailed && !isSending && <CheckCheck size={13} style={{ opacity: 0.7 }} title="Delivered" />}
+            {isFailed && (
+              <span className="status-indicator-failed" title={message.deliveryError || 'Delivery Failed'}>
+                <AlertCircle size={13} color="var(--rose)" aria-label="Delivery failed" />
+              </span>
+            )}
+            {isSending && (
+              <Clock size={13} style={{ opacity: 0.7 }} aria-label="Sending in progress" />
+            )}
+            {!isFailed && !isSending && (
+              <CheckCheck size={13} style={{ opacity: 0.7 }} aria-label="Delivered successfully" />
+            )}
           </>
         )}
       </div>

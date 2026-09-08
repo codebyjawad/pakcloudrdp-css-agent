@@ -5,24 +5,33 @@ import {
   Pause,
   Play,
   RotateCw,
-  Phone,
-  MessageCircle,
-  Share2,
-  CheckCircle2,
   Sparkles,
-  X,
-  Lightbulb,
   ChevronLeft,
-  ChevronDown
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  MessageSquare,
+  Copy,
+  FileText,
+  Check
 } from 'lucide-react';
 import ChatBubble from './ChatBubble';
 import { api } from '../services/api';
+import { formatRelativeTime, getCustomerDisplayName, getAvatarInitial } from '../utils/formatters';
 
-export default function InboxView({ chats, onRefresh, activeChatId, setActiveChatId }) {
+export default function InboxView({
+  chats,
+  onRefresh,
+  activeChatId,
+  setActiveChatId,
+  externalFilter,
+  onClearExternalFilter
+}) {
   const [filterChannel, setFilterChannel] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL', 'ESCALATED', 'PAUSED', 'AWAITING_REPLY', 'UNREAD'
   const [searchQuery, setSearchQuery] = useState('');
   const [activeThread, setActiveThread] = useState(null);
-  const [loadingThread, setLoadingThread] = useState(false);
+  const [_loadingThread, setLoadingThread] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [aiPaused, setAiPaused] = useState(false);
@@ -31,18 +40,45 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
   // AI Profit Coach states
   const [coachData, setCoachData] = useState(null);
   const [coachLoading, setCoachLoading] = useState(false);
-  const [showCoach, setShowCoach] = useState(true);
+  const [assistantDockOpen, setAssistantDockOpen] = useState(true);
+  const [dockTab, setDockTab] = useState('coach'); // 'coach', 'quotes', or 'notes'
+
+  // Customer Notes states
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSavedStatus, setNotesSavedStatus] = useState(null); // 'saved' | 'error' | null
 
   // Scroll management refs and states
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const textareaRef = useRef(null);
   const isAtBottomRef = useRef(true);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
   const [hasNewUnseenMessages, setHasNewUnseenMessages] = useState(false);
   const prevChatIdRef = useRef(activeChatId);
   const prevHistoryLengthRef = useRef(0);
 
-  // Check if user is scrolled near the bottom of the conversation
+  // Auto-resize composer textarea as text grows up to 140px
+  const handleTextareaChange = (e) => {
+    setReplyText(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+  };
+
+  // Sync external filter from header chips if triggered
+  useEffect(() => {
+    if (externalFilter) {
+      if (externalFilter === 'ESCALATED') {
+        setFilterStatus('ESCALATED');
+        setFilterChannel('ALL');
+      } else if (externalFilter === 'ALL') {
+        setFilterStatus('ALL');
+        setFilterChannel('ALL');
+      }
+    }
+  }, [externalFilter]);
+
+  // Check if user is scrolled near bottom of messages
   const checkIfAtBottom = useCallback(() => {
     const el = messagesContainerRef.current;
     if (!el) return true;
@@ -72,18 +108,19 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
   }, []);
 
   // Fetch AI Coach suggestions
-  const fetchCoach = async (force = false) => {
-    if (!activeChatId) return;
+  const fetchCoach = useCallback(async (chatId, force = false) => {
+    const targetId = chatId || activeChatId;
+    if (!targetId) return;
     setCoachLoading(true);
     try {
-      const data = await api.getAiSuggestions(activeChatId, force);
+      const data = await api.getAiSuggestions(targetId, force);
       setCoachData(data);
     } catch (err) {
       console.warn('Coach fetch error:', err);
     } finally {
       setCoachLoading(false);
     }
-  };
+  }, [activeChatId]);
 
   // Select first chat if none selected initially
   useEffect(() => {
@@ -92,7 +129,7 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
     }
   }, [activeChatId, chats, setActiveChatId]);
 
-  // Load thread whenever activeChatId changes (isolated from chats polling)
+  // Load thread whenever activeChatId changes
   useEffect(() => {
     if (!activeChatId) return;
 
@@ -108,9 +145,10 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
         if (isMounted && data?.chat) {
           setActiveThread(data.chat);
           setAiPaused(Boolean(data.chat.aiPaused));
-          // Load coach suggestions
-          fetchCoach(false);
-          // When opening a new conversation, instantly jump to bottom
+          setCustomerNotes(data.chat.notes || '');
+          setNotesSavedStatus(null);
+          fetchCoach(activeChatId, false);
+
           requestAnimationFrame(() => {
             if (messagesContainerRef.current) {
               messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
@@ -124,7 +162,7 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
       });
 
     return () => { isMounted = false; };
-  }, [activeChatId]);
+  }, [activeChatId, fetchCoach]);
 
   // Silent background sync when active conversation gets new messages in chats poll
   const activeChatSummary = chats.find((c) => c.sessionId === activeChatId);
@@ -140,7 +178,6 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
     const currentLast = activeThread.history?.[currentCount - 1]?.text;
     const summaryLast = activeChatSummary?.lastMessage;
 
-    // Only silently re-fetch if message count or last message actually changed
     if (summaryCount !== currentCount || (summaryLast && summaryLast !== currentLast)) {
       api.getChatThread(activeChatId)
         .then((data) => {
@@ -151,10 +188,9 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
         })
         .catch((err) => console.error('Silent thread sync error:', err));
     }
-  }, [activeChatSummaryKey, activeChatId]);
+  }, [activeChatSummaryKey, activeChatId, activeThread, activeChatSummary]);
 
   // Auto-scroll controller: only auto-scrolls down if user is ALREADY at bottom
-  // If user scrolled up to see previous messages, their view stays undisturbed.
   useEffect(() => {
     const currentHistory = activeThread?.history || [];
     const historyLength = currentHistory.length;
@@ -184,7 +220,6 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
           }
         });
       } else {
-        // User has scrolled up to see previous chat; do not force scroll down!
         setHasNewUnseenMessages(true);
       }
     }
@@ -197,15 +232,18 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
 
     const textToSend = replyText.trim();
     setReplyText('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '46px';
+    }
     setSending(true);
 
     try {
       const res = await api.sendMessage(activeChatId, textToSend, 'Owner');
       if (res?.history) {
-        setActiveThread((prev) => prev ? { ...prev, history: res.history } : null);
+        setActiveThread((prev) => (prev ? { ...prev, history: res.history } : null));
       }
       if (res && res.success === false) {
-        alert(`⚠️ Delivery Failed!\n\nThe message was recorded in the inbox, but Meta rejected delivery to ${activeThread?.channel || 'WhatsApp'}:\n"${res.error || 'Token expired or invalid'}".\n\nPlease verify your Meta Access Token.`);
+        alert(`⚠️ Delivery Failed!\n\nMessage recorded in inbox, but Meta rejected delivery to ${activeThread?.channel || 'customer'}:\n"${res.error || 'Token expired or invalid'}".\n\nPlease reconnect your Meta Access Token in Meta & System Status.`);
       }
       isAtBottomRef.current = true;
       requestAnimationFrame(() => {
@@ -214,6 +252,26 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
       onRefresh?.();
     } catch (err) {
       alert(`Could not send message: ${err.message}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Retry sending a previously failed message
+  const handleRetryMessage = async (failedMsg) => {
+    if (!activeChatId || !failedMsg?.text || sending) return;
+    setSending(true);
+    try {
+      const res = await api.sendMessage(activeChatId, failedMsg.text, 'Owner');
+      if (res?.history) {
+        setActiveThread((prev) => (prev ? { ...prev, history: res.history } : null));
+      }
+      if (res?.success === false) {
+        alert(`⚠️ Delivery Failed again:\n${res.error || 'Token still invalid or expired'}`);
+      }
+      onRefresh?.();
+    } catch (err) {
+      alert(`Retry failed: ${err.message}`);
     } finally {
       setSending(false);
     }
@@ -229,49 +287,72 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
       await api.toggleAiPause(activeChatId, nextState);
       onRefresh?.();
     } catch (err) {
-      setAiPaused(!nextState); // rollback
+      setAiPaused(!nextState);
       alert(`Could not toggle AI pause: ${err.message}`);
     }
   };
 
-  // Quick canned template inserters
-  const insertTemplate = (text) => {
-    setReplyText(text);
-  };
-
-  const sendFollowup = async () => {
-    if (!activeChatId) return;
-    if (!confirm('Send approved WhatsApp Plan-Selection Follow-up template to this customer?')) return;
+  // Handle Customer Notes saving
+  const handleSaveNotes = async () => {
+    if (!activeChatId || savingNotes) return;
+    setSavingNotes(true);
+    setNotesSavedStatus(null);
     try {
-      await api.sendFollowupTemplate(activeChatId);
-      const data = await api.getChatThread(activeChatId);
-      if (data?.chat) {
-        setActiveThread(data.chat);
-        isAtBottomRef.current = true;
-        requestAnimationFrame(() => {
-          scrollToBottom('smooth');
-        });
-      }
+      await api.updateChatNotes(activeChatId, customerNotes);
+      setNotesSavedStatus('saved');
+      setActiveThread((prev) => (prev ? { ...prev, notes: customerNotes } : null));
       onRefresh?.();
+      setTimeout(() => {
+        setNotesSavedStatus(null);
+      }, 3500);
     } catch (err) {
-      alert(`Follow-up error: ${err.message}`);
+      console.error('Failed to save notes:', err);
+      setNotesSavedStatus('error');
+      alert(`Could not save customer notes: ${err.message}`);
+    } finally {
+      setSavingNotes(false);
     }
   };
 
-  // Filtering chats
-  const filteredChats = chats.filter((c) => {
-    // Channel filter
-    if (filterChannel === 'WHATSAPP' && c.channel?.toLowerCase() !== 'whatsapp') return false;
-    if (filterChannel === 'MESSENGER' && c.channel?.toLowerCase() !== 'messenger') return false;
-    if (filterChannel === 'INSTAGRAM' && c.channel?.toLowerCase() !== 'instagram') return false;
-    if (filterChannel === 'PAUSED' && !c.aiPaused) return false;
-    if (filterChannel === 'ESCALATED' && (!c.escalations || c.escalations.length === 0)) return false;
+  // Insert canned template
+  const insertTemplate = (text) => {
+    setReplyText(text);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 140) + 'px';
+        }
+      }, 0);
+    }
+  };
 
-    // Search filter
+  // Comprehensive conversation filtering
+  const filteredChats = chats.filter((c) => {
+    // 1. Channel filter
+    const ch = (c.channel || '').toLowerCase();
+    if (filterChannel === 'WHATSAPP' && ch !== 'whatsapp') return false;
+    if (filterChannel === 'MESSENGER' && ch !== 'messenger') return false;
+    if (filterChannel === 'INSTAGRAM' && ch !== 'instagram') return false;
+
+    // 2. Status filter
+    if (filterStatus === 'ESCALATED' && (!c.escalations || c.escalations.length === 0)) return false;
+    if (filterStatus === 'PAUSED' && !c.aiPaused) return false;
+    if (filterStatus === 'AWAITING_REPLY') {
+      // Customer sent the last message
+      const isAwaiting = c.lastSender === 'user' || (c.history && c.history[c.history.length - 1]?.sender === 'user');
+      if (!isAwaiting) return false;
+    }
+    if (filterStatus === 'UNREAD') {
+      if ((c.customerCount || 0) === 0) return false;
+    }
+
+    // 3. Search query filter
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     const name = (c.contactName || '').toLowerCase();
-    const sid = (c.sessionId || '').toLowerCase();
+    const sid = (c.sessionId || c.senderId || '').toLowerCase();
     const lastMsg = (c.lastMessage || c.history?.[c.history?.length - 1]?.text || '').toLowerCase();
     return name.includes(q) || sid.includes(q) || lastMsg.includes(q);
   });
@@ -284,74 +365,114 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
     return 'whatsapp';
   };
 
+  // Active chat display metadata
+  const activeDisplayName = activeThread ? getCustomerDisplayName(activeThread) : 'Customer';
+  const activeInitial = activeThread ? getAvatarInitial(activeDisplayName, activeThread.senderId || activeThread.sessionId) : '#';
+
   return (
     <div className={`inbox-container mobile-view-${mobileView}`}>
       {/* LEFT PANE: Thread List */}
       <div className="threads-pane">
         <div className="threads-search-bar">
           <div className="search-input-wrap">
-            <Search size={16} />
+            <Search size={16} aria-hidden="true" />
             <input
               type="text"
               className="search-input"
-              placeholder="Search customer name, phone, or msg..."
+              placeholder="Search name, phone, or msg..."
+              aria-label="Search conversations by customer name, phone number, or message"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="filter-pills-row">
+          {/* Clean 4-chip non-wrapping Channel Filter Row */}
+          <div className="channel-pills-row" role="group" aria-label="Filter conversations by channel">
             <button
-              className={`filter-pill ${filterChannel === 'ALL' ? 'active' : ''}`}
+              type="button"
+              className={`channel-pill ${filterChannel === 'ALL' ? 'active' : ''}`}
               onClick={() => setFilterChannel('ALL')}
+              aria-label="All channels"
             >
               All ({chats.length})
             </button>
             <button
-              className={`filter-pill ${filterChannel === 'WHATSAPP' ? 'active' : ''}`}
+              type="button"
+              className={`channel-pill ${filterChannel === 'WHATSAPP' ? 'active' : ''}`}
               onClick={() => setFilterChannel('WHATSAPP')}
+              aria-label="Filter by WhatsApp"
+              title="WhatsApp"
             >
               📱 WhatsApp
             </button>
             <button
-              className={`filter-pill ${filterChannel === 'MESSENGER' ? 'active' : ''}`}
+              type="button"
+              className={`channel-pill ${filterChannel === 'MESSENGER' ? 'active' : ''}`}
               onClick={() => setFilterChannel('MESSENGER')}
+              aria-label="Filter by Messenger"
+              title="Facebook Messenger"
             >
               💬 Messenger
             </button>
             <button
-              className={`filter-pill ${filterChannel === 'INSTAGRAM' ? 'active' : ''}`}
+              type="button"
+              className={`channel-pill ${filterChannel === 'INSTAGRAM' ? 'active' : ''}`}
               onClick={() => setFilterChannel('INSTAGRAM')}
+              aria-label="Filter by Instagram"
+              title="Instagram Direct"
             >
               📸 Instagram
             </button>
+          </div>
+
+          {/* Workflow Status Filter Chips (Escalated, Paused, Awaiting reply, Unread) */}
+          <div className="status-filter-pills" role="group" aria-label="Filter conversations by workflow status">
             <button
-              className={`filter-pill ${filterChannel === 'PAUSED' ? 'active' : ''}`}
-              onClick={() => setFilterChannel('PAUSED')}
+              type="button"
+              className={`status-pill-btn ${filterStatus === 'ALL' ? 'active' : ''}`}
+              onClick={() => { setFilterStatus('ALL'); onClearExternalFilter?.(); }}
             >
-              ⏸️ Paused
+              All Status
             </button>
             <button
-              className={`filter-pill ${filterChannel === 'ESCALATED' ? 'active' : ''}`}
-              onClick={() => setFilterChannel('ESCALATED')}
+              type="button"
+              className={`status-pill-btn ${filterStatus === 'AWAITING_REPLY' ? 'active' : ''}`}
+              onClick={() => setFilterStatus('AWAITING_REPLY')}
             >
-              ⚠️ Escalated
+              ⏳ Awaiting Reply
+            </button>
+            <button
+              type="button"
+              className={`status-pill-btn ${filterStatus === 'ESCALATED' ? 'active' : ''}`}
+              onClick={() => setFilterStatus('ESCALATED')}
+            >
+              🚨 Escalated
+            </button>
+            <button
+              type="button"
+              className={`status-pill-btn ${filterStatus === 'PAUSED' ? 'active' : ''}`}
+              onClick={() => setFilterStatus('PAUSED')}
+            >
+              ⏸️ AI Paused
             </button>
           </div>
         </div>
 
-        <div className="threads-list">
+        {/* Conversation Cards List */}
+        <div className="threads-list" role="feed" aria-label="Conversations list">
           {filteredChats.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No conversations found.
+            <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              No conversations match the selected filter.
             </div>
           ) : (
             filteredChats.map((c) => {
               const isSelected = c.sessionId === activeChatId;
-              const name = c.contactName || c.senderId || c.sessionId;
-              const initial = (name[0] || '?').toUpperCase();
+              const displayName = getCustomerDisplayName(c);
+              const avatarInitial = getAvatarInitial(displayName, c.senderId || c.sessionId);
               const chClass = getChannelBadgeClass(c.channel);
-              const lastText = c.lastMessage || c.history?.[c.history?.length - 1]?.text || 'No messages yet';
+              const lastText = c.lastMessage || c.history?.[c.history?.length - 1]?.text || 'No message history yet';
+              const relTime = formatRelativeTime(c.lastTime);
+              const isAwaitingReply = c.lastSender === 'user';
 
               return (
                 <div
@@ -361,10 +482,19 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
                     setActiveChatId(c.sessionId);
                     setMobileView('chat');
                   }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setActiveChatId(c.sessionId);
+                      setMobileView('chat');
+                    }
+                  }}
+                  aria-label={`Conversation with ${displayName}, ${c.channel || 'WhatsApp'}, last active ${relTime}`}
                 >
                   <div className="thread-avatar-wrap">
-                    <div className="avatar">{initial}</div>
-                    <div className={`channel-badge-icon ${chClass}`}>
+                    <div className="avatar" aria-hidden="true">{avatarInitial}</div>
+                    <div className={`channel-badge-icon ${chClass}`} aria-hidden="true">
                       {chClass === 'whatsapp' && '📱'}
                       {chClass === 'messenger' && '💬'}
                       {chClass === 'instagram' && '📸'}
@@ -373,17 +503,23 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
 
                   <div className="thread-content">
                     <div className="thread-top-row">
-                      <span className="thread-name">{name}</span>
-                      <span className="thread-time">
-                        {c.lastTime ? new Date(c.lastTime).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}
+                      <span className="thread-name" title={displayName}>
+                        {displayName}
                       </span>
+                      <span className="thread-time">{relTime}</span>
                     </div>
 
                     <div className="thread-preview-row">
                       <span className="thread-snippet">{lastText}</span>
                       <div className="thread-indicators">
+                        {isAwaitingReply && <span className="tag-mini reply-needed">Needs Reply</span>}
                         {c.aiPaused && <span className="tag-mini paused">AI PAUSED</span>}
                         {c.escalations?.length > 0 && <span className="tag-mini escalated">ESCALATED</span>}
+                        {Boolean(c.notes && c.notes.trim()) && (
+                          <span className="tag-mini notes-tag" title={c.notes}>
+                            📝 Note
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -407,18 +543,15 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
                   className="icon-btn mobile-back-btn"
                   onClick={() => setMobileView('list')}
                   title="Back to conversation list"
+                  aria-label="Back to conversation list"
                   style={{ marginRight: 4 }}
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={20} aria-hidden="true" />
                 </button>
 
-                <div className="avatar">
-                  {((activeThread.contactName || activeThread.sessionId || '?')[0]).toUpperCase()}
-                </div>
+                <div className="avatar" aria-hidden="true">{activeInitial}</div>
                 <div>
-                  <h2 className="chat-header-title">
-                    {activeThread.contactName || activeThread.sessionId}
-                  </h2>
+                  <h2 className="chat-header-title">{activeDisplayName}</h2>
                   <div className="chat-header-sub">
                     <span>{activeThread.channel || 'WhatsApp'}</span>
                     <span>•</span>
@@ -428,149 +561,93 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
               </div>
 
               <div className="chat-header-actions">
-                {/* AI Profit Coach Toggle Button */}
+                {/* Customer Notes Quick Button */}
                 <button
                   type="button"
-                  className="icon-btn"
-                  style={{ width: 'auto', padding: '0 12px', gap: 6, fontSize: '12px', color: showCoach ? 'var(--accent-primary)' : 'var(--text-secondary)', background: showCoach ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)' }}
+                  className={`assistant-toggle-btn notes-header-btn ${assistantDockOpen && dockTab === 'notes' ? 'active' : ''} ${Boolean(customerNotes && customerNotes.trim()) ? 'has-notes' : ''}`}
                   onClick={() => {
-                    setShowCoach(!showCoach);
-                    if (!coachData && !coachLoading) fetchCoach(false);
+                    if (assistantDockOpen && dockTab === 'notes') {
+                      setAssistantDockOpen(false);
+                    } else {
+                      setAssistantDockOpen(true);
+                      setDockTab('notes');
+                    }
                   }}
-                  title="Toggle AI Profit Coach recommendations"
+                  title={customerNotes && customerNotes.trim() ? 'View & Edit Private Customer Notes' : 'Add Private Customer Notes'}
+                  aria-label="Toggle Customer Notes dock"
                 >
-                  <Sparkles size={15} />
-                  <span>AI Coach</span>
+                  <FileText size={14} aria-hidden="true" />
+                  <span>Notes</span>
+                  {Boolean(customerNotes && customerNotes.trim()) && (
+                    <span className="notes-indicator-dot" title="Has saved notes" aria-hidden="true" />
+                  )}
+                </button>
+
+                {/* AI Assistant Dock Toggle Button */}
+                <button
+                  type="button"
+                  className={`assistant-toggle-btn ${assistantDockOpen && dockTab !== 'notes' ? 'active' : ''}`}
+                  onClick={() => {
+                    if (assistantDockOpen && dockTab !== 'notes') {
+                      setAssistantDockOpen(false);
+                    } else {
+                      setAssistantDockOpen(true);
+                      if (dockTab === 'notes') setDockTab('coach');
+                      if (!coachData && !coachLoading) fetchCoach(activeChatId, false);
+                    }
+                  }}
+                  title="Toggle Assistant Dock (AI Suggestions & Plan Quotes)"
+                  aria-label="Toggle AI Coach & Quote templates dock"
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+                  <span>Assistant Dock</span>
+                  {assistantDockOpen && dockTab !== 'notes' ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                 </button>
 
                 {/* AI Pause / Resume Toggle */}
-                <div
+                <button
+                  type="button"
                   className={`ai-pause-toggle ${aiPaused ? 'paused' : ''}`}
                   onClick={handleToggleAiPause}
                   title="Pause or Resume automatic AI replies for this customer"
+                  aria-label={aiPaused ? 'Resume AI automatic replies' : 'Pause AI auto-replies (Owner manual mode)'}
                 >
-                  {aiPaused ? <Pause size={14} /> : <Play size={14} />}
-                  <span>{aiPaused ? 'AI Is Paused (Owner Mode)' : 'AI Active (Auto-Reply)'}</span>
-                  <div className={`switch-track ${aiPaused ? 'active' : ''}`}>
+                  {aiPaused ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+                  <span>{aiPaused ? 'AI Paused (Owner Mode)' : 'AI Active'}</span>
+                  <div className={`switch-track ${aiPaused ? 'active' : ''}`} aria-hidden="true">
                     <div className="switch-knob"></div>
                   </div>
-                </div>
+                </button>
 
                 <button
+                  type="button"
                   className="icon-btn"
-                  title="Refresh conversation"
+                  title="Refresh conversation messages"
+                  aria-label="Refresh conversation messages"
                   onClick={() => onRefresh?.()}
                 >
-                  <RotateCw size={16} />
+                  <RotateCw size={16} aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* AI PROFIT COACH BANNER */}
-            {showCoach && (
-              <div style={{
-                background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, rgba(18, 25, 40, 0.95) 100%)',
-                borderBottom: '1px solid rgba(99, 102, 241, 0.25)',
-                padding: '12px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                zIndex: 4
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Sparkles size={16} color="var(--accent-primary)" />
-                    <strong style={{ fontSize: '13px', color: '#fff' }}>AI Profit Coach</strong>
-                    {coachData?.analysis?.intent && (
-                      <span className="intent-pill" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                        {coachData.analysis.intent}
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      type="button"
-                      className="template-btn"
-                      style={{ fontSize: '11px', padding: '3px 8px' }}
-                      disabled={coachLoading}
-                      onClick={() => fetchCoach(true)}
-                      title="Re-analyze chat using Gemini"
-                    >
-                      {coachLoading ? 'Analyzing…' : '↻ Re-Analyze'}
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      style={{ width: 22, height: 22, border: 'none' }}
-                      onClick={() => setShowCoach(false)}
-                      title="Hide coach panel"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                {coachData ? (
-                  <>
-                    {coachData.analysis?.summary && (
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                        <strong>Chat Context:</strong> {coachData.analysis.summary}
-                      </div>
-                    )}
-                    {coachData.analysis?.closingStrategy && (
-                      <div style={{ fontSize: '12.5px', color: '#c7d2fe', display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <Lightbulb size={13} color="var(--amber)" style={{ minWidth: 13 }} />
-                        <span><strong>Strategy:</strong> {coachData.analysis.closingStrategy}</span>
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4, alignItems: 'center' }}>
-                      <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        RECOMMENDED NEXT MESSAGES (CLICK TO INSERT):
-                      </span>
-                      {(coachData.suggestions || coachData.analysis?.suggestions || []).map((sugg, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          className="template-btn"
-                          style={{
-                            fontSize: '12px',
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            borderColor: 'rgba(99, 102, 241, 0.4)',
-                            color: '#e0e7ff',
-                            maxWidth: '100%',
-                            textAlign: 'left',
-                            whiteSpace: 'normal',
-                            lineHeight: 1.4,
-                            padding: '6px 12px'
-                          }}
-                          onClick={() => setReplyText(sugg)}
-                          title="Insert this reply into the message box"
-                        >
-                          💬 {sugg}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {coachLoading ? 'Analyzing conversation with Gemini…' : 'Click Re-Analyze to generate deal-closing recommendations.'}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Messages Scroll Area */}
+            {/* Messages Scroll Area (Clean container that pushes content rather than overlaying) */}
             <div className="chat-messages-wrapper">
               <div
                 className="chat-messages-area"
                 ref={messagesContainerRef}
                 onScroll={handleScroll}
+                aria-live="polite"
+                role="log"
+                aria-label="Customer conversation messages"
               >
                 {activeThread.history && activeThread.history.length > 0 ? (
                   activeThread.history.map((msg, idx) => (
-                    <ChatBubble key={msg.id || idx} message={msg} />
+                    <ChatBubble
+                      key={msg.id || idx}
+                      message={msg}
+                      onRetry={handleRetryMessage}
+                    />
                   ))
                 ) : (
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto' }}>
@@ -586,146 +663,272 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
                   type="button"
                   className={`scroll-bottom-btn ${hasNewUnseenMessages ? 'has-new' : ''}`}
                   onClick={() => scrollToBottom('smooth')}
-                  title="Scroll to latest messages"
+                  title="Scroll down to latest messages"
+                  aria-label="Scroll down to latest messages"
                 >
-                  <ChevronDown size={15} />
+                  <ChevronDown size={15} aria-hidden="true" />
                   <span>{hasNewUnseenMessages ? 'New messages ↓' : 'Latest'}</span>
                 </button>
               )}
             </div>
 
-            {/* Chat Input & Fast Canned Actions */}
-            <div className="chat-input-bar">
-              {/* Canned Quick Templates */}
-              <div className="canned-templates-bar">
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  QUICK REPLIES:
-                </span>
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => insertTemplate(
-                    "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇺🇸 US)*\n" +
-                    "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
-                    "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
-                    "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
-                    "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
-                    "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
-                    "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
-                    "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
-                    "Aapko isme se kaunsa plan chahiye? 🚀"
+            {/* UNIFIED DOCKED ASSISTANT STRIP (Pushes content up cleanly, never overlays or clips messages) */}
+            {assistantDockOpen && (
+              <div className="docked-assistant-strip">
+                <div className="assistant-strip-tabs">
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className={`dock-tab-btn ${dockTab === 'coach' ? 'active' : ''}`}
+                      onClick={() => setDockTab('coach')}
+                      aria-label="Show AI Coach suggestions"
+                    >
+                      <Sparkles size={13} aria-hidden="true" />
+                      <span>AI Profit Coach</span>
+                      {coachData?.analysis?.intent && (
+                        <span className="dock-intent-tag">{coachData.analysis.intent}</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className={`dock-tab-btn ${dockTab === 'quotes' ? 'active' : ''}`}
+                      onClick={() => setDockTab('quotes')}
+                      aria-label="Show Fast Canned Plan Quotes"
+                    >
+                      <Copy size={13} aria-hidden="true" />
+                      <span>Plan Quotes</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`dock-tab-btn ${dockTab === 'notes' ? 'active' : ''}`}
+                      onClick={() => setDockTab('notes')}
+                      aria-label="Show Customer Notes"
+                    >
+                      <FileText size={13} aria-hidden="true" />
+                      <span>Customer Notes</span>
+                      {Boolean(customerNotes && customerNotes.trim()) && (
+                        <span className="dock-intent-tag notes-badge-chip">Saved</span>
+                      )}
+                    </button>
+                  </div>
+
+                  {dockTab === 'coach' && (
+                    <button
+                      type="button"
+                      className="dock-reanalyze-btn"
+                      disabled={coachLoading}
+                      onClick={() => fetchCoach(activeChatId, true)}
+                      title="Re-analyze full conversation with Gemini"
+                      aria-label="Re-analyze conversation with Gemini"
+                    >
+                      <RotateCw size={12} className={coachLoading ? 'spin' : ''} aria-hidden="true" />
+                      <span>{coachLoading ? 'Analyzing…' : 'Re-Analyze'}</span>
+                    </button>
                   )}
-                >
-                  🇺🇸 All Plans (US)
-                </button>
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => insertTemplate(
-                    "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇬🇧 UK)*\n" +
-                    "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
-                    "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
-                    "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
-                    "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
-                    "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
-                    "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
-                    "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
-                    "Aapko isme se kaunsa plan chahiye? 🚀"
-                  )}
-                >
-                  🇬🇧 All Plans (UK)
-                </button>
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => insertTemplate(
-                    "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇪🇺 EU / Germany)*\n" +
-                    "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
-                    "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
-                    "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
-                    "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
-                    "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
-                    "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
-                    "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                    "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
-                    "Aapko isme se kaunsa plan chahiye? 🚀"
-                  )}
-                >
-                  🇪🇺 All Plans (EU)
-                </button>
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => insertTemplate(
-                    "Payment Details:\n" +
-                    "• JazzCash: 03035421390 (Muhammad Jawad)\n" +
-                    "• Raast ID: 03035421390\n" +
-                    "• NayaPay: 03035421390\n" +
-                    "• UBL Bank: 282433917 (Muhammad Jawad)\n\n" +
-                    "Payment bhej kar screenshot yahan share kar dein, 30 min me machine deliver ho jayegi."
-                  )}
-                >
-                  💳 Payment Accounts
-                </button>
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => insertTemplate('Payment screenshot milne ke 30 minutes ke andar aapka dedicated RDP credentials ke sath deliver ho jayega.')}
-                >
-                  🚀 30-Min Delivery
-                </button>
-                {activeThread.channel?.toLowerCase() === 'whatsapp' && (
-                  <button
-                    type="button"
-                    className="template-btn"
-                    style={{ color: 'var(--emerald)' }}
-                    onClick={sendFollowup}
-                  >
-                    ✨ Send Follow-up Template
-                  </button>
+                </div>
+
+                {dockTab === 'coach' && (
+                  <div className="assistant-strip-content">
+                    {coachData?.analysis?.closingStrategy && (
+                      <div className="dock-strategy-row">
+                        <Lightbulb size={13} color="var(--amber)" style={{ minWidth: 13 }} aria-hidden="true" />
+                        <span><strong>Strategy:</strong> {coachData.analysis.closingStrategy}</span>
+                      </div>
+                    )}
+
+                    <div className="dock-chips-container">
+                      {(coachData?.suggestions || coachData?.analysis?.suggestions || []).length > 0 ? (
+                        (coachData.suggestions || coachData.analysis.suggestions).map((sugg, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            className="dock-suggestion-chip"
+                            onClick={() => setReplyText(sugg)}
+                            title="Click to insert into message reply box"
+                            aria-label={`Insert suggested reply: ${sugg}`}
+                          >
+                            💬 {sugg}
+                          </button>
+                        ))
+                      ) : (
+                        <span className="dock-placeholder-note">
+                          {coachLoading ? 'Analyzing intent and generating closing messages with Gemini…' : 'No recommendations yet. Click Re-Analyze to generate deal-closing suggestions.'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {dockTab === 'quotes' && (
+                  <div className="assistant-strip-content">
+                    <div className="dock-chips-container">
+                      <button
+                        type="button"
+                        className="dock-suggestion-chip quote-chip"
+                        onClick={() => insertTemplate(
+                          "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇺🇸 US)*\n" +
+                          "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
+                          "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
+                          "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
+                          "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
+                          "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
+                          "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
+                          "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
+                          "Aapko isme se kaunsa plan chahiye? 🚀"
+                        )}
+                        aria-label="Insert US All Plans quote"
+                      >
+                        🇺🇸 All Plans (US)
+                      </button>
+
+                      <button
+                        type="button"
+                        className="dock-suggestion-chip quote-chip"
+                        onClick={() => insertTemplate(
+                          "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇬🇧 UK)*\n" +
+                          "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
+                          "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
+                          "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
+                          "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
+                          "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
+                          "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
+                          "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
+                          "Aapko isme se kaunsa plan chahiye? 🚀"
+                        )}
+                        aria-label="Insert UK All Plans quote"
+                      >
+                        🇬🇧 All Plans (UK)
+                      </button>
+
+                      <button
+                        type="button"
+                        className="dock-suggestion-chip quote-chip"
+                        onClick={() => insertTemplate(
+                          "💵 *PAKCLOUDRDP — ALL PLANS (Region: 🇪🇺 EU / Germany)*\n" +
+                          "*(100% Dedicated Machine · Dedicated Private IP · 1 Gbps Port)*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "1️⃣ *Little*: 1 vCPU · 3 GB RAM · 30 GB NVMe ➔ *₨1,500/mo*\n" +
+                          "2️⃣ *Starter*: 4 vCPU · 8 GB RAM · 75 GB NVMe ➔ *₨2,800/mo* ⭐\n" +
+                          "3️⃣ *Standard*: 6 vCPU · 12 GB RAM · 100 GB NVMe ➔ *₨3,800/mo*\n" +
+                          "4️⃣ *Plus*: 8 vCPU · 24 GB RAM · 200 GB NVMe ➔ *₨7,000/mo*\n" +
+                          "5️⃣ *Pro*: 12 vCPU · 48 GB RAM · 250 GB NVMe ➔ *₨12,500/mo*\n" +
+                          "6️⃣ *Elite*: 16 vCPU · 64 GB RAM · 300 GB NVMe ➔ *₨18,500/mo*\n" +
+                          "7️⃣ *Flagship*: 18 vCPU · 96 GB RAM · 350 GB NVMe ➔ *₨24,400/mo*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "⚡ Setup: 30 Mins | 💳 JazzCash, Raast, NayaPay, UBL Bank\n" +
+                          "Aapko isme se kaunsa plan chahiye? 🚀"
+                        )}
+                        aria-label="Insert EU All Plans quote"
+                      >
+                        🇪🇺 All Plans (EU)
+                      </button>
+
+                      <button
+                        type="button"
+                        className="dock-suggestion-chip quote-chip"
+                        onClick={() => insertTemplate(
+                          "💳 *PAKCLOUDRDP — OFFICIAL PAYMENT ACCOUNTS*\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "1️⃣ *JazzCash Account:*\n" +
+                          "   • Number: `0302-3900900`\n" +
+                          "   • Title: `Jawad Ahmad`\n\n" +
+                          "2️⃣ *Raast ID (Zero Fee from any Bank):*\n" +
+                          "   • ID: `03023900900`\n\n" +
+                          "3️⃣ *NayaPay:*\n" +
+                          "   • ID: `jawad.ahmad@nayapay`\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "⚠️ Payment send karne k baad *Screenshot / Receipt* lazmi share karein taake machine setup shuru karein! 🚀"
+                        )}
+                        aria-label="Insert Payment Accounts details"
+                      >
+                        💳 Payment Accounts
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {dockTab === 'notes' && (
+                  <div className="assistant-strip-content notes-dock-content">
+                    <div className="notes-dock-header">
+                      <div className="notes-dock-title">
+                        <FileText size={14} color="#93c5fd" aria-hidden="true" />
+                        <span>Private Customer Notes (Visible only to internal team)</span>
+                      </div>
+                      <div className="notes-actions-group">
+                        {notesSavedStatus === 'saved' && (
+                          <span className="notes-status-badge saved">
+                            <Check size={12} aria-hidden="true" /> Saved to CRM
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="save-notes-btn"
+                          disabled={savingNotes}
+                          onClick={handleSaveNotes}
+                          aria-label="Save customer notes"
+                        >
+                          {savingNotes ? 'Saving…' : 'Save Notes'}
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      className="notes-dock-textarea"
+                      placeholder="Type private notes about this customer (e.g., active server IP, renewal due date, agreed payment method, special discounts, custom setup preferences)..."
+                      value={customerNotes}
+                      onChange={(e) => setCustomerNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
                 )}
               </div>
+            )}
 
-              {/* Message Input Box */}
-              <form className="input-form-row" onSubmit={handleSendMessage}>
+            {/* Chat Input Bar */}
+            <div className="chat-input-bar">
+              <form onSubmit={handleSendMessage} className="input-form-row">
                 <textarea
+                  ref={textareaRef}
                   className="chat-textarea"
-                  placeholder="Type a direct message as Owner... (Press Enter to send, Shift+Enter for new line)"
+                  placeholder={`Reply to ${activeDisplayName} as Owner (bypasses AI)...`}
+                  aria-label={`Reply to ${activeDisplayName}`}
+                  rows={1}
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={handleTextareaChange}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      handleSendMessage();
+                      handleSendMessage(e);
                     }
                   }}
-                  rows={1}
                 />
+
                 <button
                   type="submit"
                   className="send-btn"
                   disabled={!replyText.trim() || sending}
-                  title="Send message"
+                  title="Send message directly to customer"
+                  aria-label="Send reply to customer"
                 >
-                  <Send size={18} />
+                  <Send size={18} aria-hidden="true" />
                 </button>
               </form>
             </div>
           </>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-            Select a conversation to view chat history.
+          <div className="no-chat-selected">
+            <MessageSquare size={48} color="var(--text-muted)" aria-hidden="true" />
+            <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 600 }}>No Conversation Selected</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+              Select a customer conversation from the list to view history and reply directly.
+            </p>
           </div>
         )}
       </div>

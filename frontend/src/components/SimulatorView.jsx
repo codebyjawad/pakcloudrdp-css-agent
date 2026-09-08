@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlayCircle, Send, Bot, Sparkles, AlertCircle } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function SimulatorView() {

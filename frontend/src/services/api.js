@@ -58,6 +58,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data)
     }),
+  getChatNotes: (sessionId) => fetchJSON(`/api/chats/${encodeURIComponent(sessionId)}/notes`),
+  updateChatNotes: (sessionId, notes) =>
+    fetchJSON(`/api/chats/${encodeURIComponent(sessionId)}/notes`, {
+      method: 'PUT',
+      body: JSON.stringify({ notes })
+    }),
 
   // Plans & Pricing
   getPlans: () => fetchJSON('/api/plans'),
