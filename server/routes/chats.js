@@ -87,12 +87,16 @@ router.post('/:id/send', async (req, res) => {
   const recipientId = meta.senderId || sessionId;
   const channel = meta.channel || 'WhatsApp';
 
-  // Append to thread BEFORE dispatch so the thread always has the message
+  const msgId = 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+
+  // Append to thread BEFORE dispatch so the thread has the message recorded
   conversationStore.push(sessionId, {
+    id: msgId,
     sender: 'owner',
     text: text,
     timestamp: new Date().toISOString(),
-    channel
+    channel,
+    deliveryStatus: 'sending'
   }, { channel, contactName: meta.contactName, senderId: recipientId });
 
   // Dispatch to the customer on their original channel
@@ -103,8 +107,20 @@ router.post('/:id/send', async (req, res) => {
     dispatchResult = { success: false, error: err.message };
   }
 
+  if (dispatchResult && dispatchResult.success) {
+    conversationStore.updateMessage(sessionId, msgId, {
+      deliveryStatus: 'delivered'
+    });
+  } else {
+    conversationStore.updateMessage(sessionId, msgId, {
+      deliveryStatus: 'failed',
+      deliveryError: dispatchResult?.error || 'Failed to dispatch to ' + channel
+    });
+  }
+
   res.json({
-    success: true,
+    success: Boolean(dispatchResult?.success),
+    error: dispatchResult?.success ? undefined : (dispatchResult?.error || 'Message delivery failed'),
     dispatchResult,
     history: conversationStore.get(sessionId)
   });

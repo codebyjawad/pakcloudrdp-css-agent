@@ -36,8 +36,11 @@ app.use(cors());
 app.use(express.json({ limit: '10mb', verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static frontend dashboard
-app.use(express.static(path.join(__dirname, '../client')));
+// Serve legacy dashboard at /legacy
+app.use('/legacy', express.static(path.join(__dirname, '../client')));
+
+// Serve modern Vite frontend at root /
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Mount API Routes
 app.use('/api/meta/webhook', metaWebhookRouter);
@@ -80,9 +83,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Fallback to index.html for SPA frontend
-app.get('*', (req, res) => {
+// Legacy dashboard SPA fallback
+app.get('/legacy*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+// Fallback to Vite index.html for SPA frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // Start Server

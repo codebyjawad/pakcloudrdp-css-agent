@@ -167,6 +167,32 @@ export const conversationStore = {
   },
 
   /**
+   * Update fields (e.g. deliveryStatus, deliveryError) on a specific message by id.
+   */
+  updateMessage(sessionId, messageId, patch = {}) {
+    const history = this.get(sessionId);
+    let found = false;
+    for (let i = 0; i < history.length; i++) {
+      if (history[i].id === messageId) {
+        Object.assign(history[i], patch);
+        found = true;
+        break;
+      }
+    }
+    if (!found) return null;
+    const meta = this.getMeta(sessionId);
+    UPSERT.run({
+      sessionId,
+      channel: meta.channel || 'WhatsApp',
+      history: JSON.stringify(history),
+      contactName: meta.contactName,
+      senderId: meta.senderId,
+      updatedAt: new Date().toISOString()
+    });
+    return history;
+  },
+
+  /**
    * Edit (correct) a specific message by id. Returns the updated history, or
    * null if the message id was not found.
    */

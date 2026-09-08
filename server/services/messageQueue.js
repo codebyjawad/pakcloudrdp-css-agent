@@ -130,12 +130,15 @@ async function processTask(task) {
     };
   }
 
+  const replyMsgId = 'm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   try {
     conversationStore.push(senderId, {
+      id: replyMsgId,
       sender: 'agent',
       text: agentResult.replyText,
       intent: agentResult.intent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      deliveryStatus: 'sending'
     }, { channel, contactName: resolvedName, senderId });
   } catch (err) {
     // Losing the transcript row is bad. Losing the reply is worse. Keep going.
@@ -178,6 +181,14 @@ async function processTask(task) {
     // The most important line in this file: the only signal that a customer is
     // waiting on a reply that never arrived.
     console.error('[MsgQueue] REPLY NOT DELIVERED to ' + senderLabel + ' (' + senderId + ') on ' + channel + ': ' + sendResult.error);
+    conversationStore.updateMessage(senderId, replyMsgId, {
+      deliveryStatus: 'failed',
+      deliveryError: sendResult.error || 'Delivery failed'
+    });
+  } else {
+    conversationStore.updateMessage(senderId, replyMsgId, {
+      deliveryStatus: 'delivered'
+    });
   }
 
   const idPrefix = task.idPrefix || 'META';
