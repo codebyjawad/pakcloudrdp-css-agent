@@ -59,6 +59,16 @@ export default function App() {
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === 'true'; } catch { return false; }
+  });
+  const handleToggleSidebarCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
+      return next;
+    });
+  };
 
   // When clicking escalation in Escalations view
   const handleSelectCustomerFromEscalation = (customerId) => {
@@ -73,14 +83,17 @@ export default function App() {
     setActiveTab('inbox');
   };
 
-  // Detect if any recent message or conversation indicates Meta OAuth token failure
-  const hasTokenError = chats.some((c) => {
-    const lastErr = c.lastError || '';
-    const hasHistoryError = (c.history || []).some(
-      (m) => m.deliveryStatus === 'failed' && /OAuthException|190|expired|token/i.test(m.deliveryError || '')
-    );
-    return /OAuthException|190|expired|token/i.test(lastErr) || hasHistoryError;
-  });
+  // Detect if any conversation has a confirmed Meta OAuth token delivery failure.
+  // We rely solely on the backend-computed flag (requires deliveryStatus==='failed' AND
+  // error matching OAuthException|190) to avoid false positives from normal message content.
+  const hasTokenError = chats.some((c) => Boolean(c.hasTokenError));
+
+  const [statusModalToOpen, setStatusModalToOpen] = useState(null);
+
+  const handleOpenStatusTokenModal = (modalType = 'whatsapp') => {
+    setStatusModalToOpen(modalType);
+    setActiveTab('status');
+  };
 
   return (
     <div className="app-container">
@@ -98,6 +111,8 @@ export default function App() {
         stats={stats}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
       />
 
       {/* Main Workspace */}
@@ -115,8 +130,8 @@ export default function App() {
               <button
                 type="button"
                 className="alert-btn primary"
-                onClick={() => setActiveTab('status')}
-                aria-label="View Meta & System Status for token setup"
+                onClick={() => handleOpenStatusTokenModal('whatsapp')}
+                aria-label="View Meta & System Status to reconnect token"
               >
                 Reconnect Token
               </button>
@@ -150,6 +165,8 @@ export default function App() {
             setActiveChatId={setActiveChatId}
             externalFilter={inboxFilter}
             onClearExternalFilter={() => setInboxFilter('ALL')}
+            hasGlobalTokenError={hasTokenError}
+            onReconnectToken={() => handleOpenStatusTokenModal('whatsapp')}
           />
         )}
 
@@ -163,7 +180,12 @@ export default function App() {
 
         {activeTab === 'simulator' && <SimulatorView />}
 
-        {activeTab === 'status' && <StatusView />}
+        {activeTab === 'status' && (
+          <StatusView
+            initialModal={statusModalToOpen}
+            onClearInitialModal={() => setStatusModalToOpen(null)}
+          />
+        )}
       </main>
     </div>
   );

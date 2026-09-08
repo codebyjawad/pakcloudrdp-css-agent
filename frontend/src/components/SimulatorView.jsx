@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlayCircle } from 'lucide-react';
+import { PlayCircle, Sparkles, Bot } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function SimulatorView() {
@@ -79,8 +79,9 @@ export default function SimulatorView() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Customer Query / Message</label>
+            <label htmlFor="simMessage" className="form-label">Customer Query / Message</label>
             <textarea
+              id="simMessage"
               className="form-input"
               rows={3}
               value={messageText}

@@ -30,7 +30,8 @@ router.get('/', (req, res) => {
     const active = escMap[c.sessionId] || escMap[c.senderId] || [];
     return { ...c, escalations: active };
   });
-  res.json({ chats });
+  const hasTokenError = chats.some((c) => c.hasTokenError);
+  res.json({ chats, hasTokenError });
 });
 
 // Get full thread for one chat + its active escalations

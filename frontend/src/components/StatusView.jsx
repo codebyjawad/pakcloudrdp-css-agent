@@ -12,12 +12,19 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function StatusView() {
+export default function StatusView({ initialModal = null, onClearInitialModal = null }) {
   const [_health, setHealth] = useState(null);
   const [_syncStatus, setSyncStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // 'instagram', 'whatsapp', null
+  const [activeModal, setActiveModal] = useState(initialModal); // 'instagram', 'whatsapp', null
+
+  useEffect(() => {
+    if (initialModal) {
+      setActiveModal(initialModal);
+      onClearInitialModal?.();
+    }
+  }, [initialModal, onClearInitialModal]);
 
   const webhookUrl = 'https://agent.codebyjawad.com/api/meta/webhook';
 
@@ -115,18 +122,18 @@ export default function StatusView() {
             <Smartphone size={20} color="var(--wa-color)" aria-hidden="true" />
             WhatsApp Cloud API
           </div>
-          <span className="status-pill online">CONFIGURED</span>
+          <span className="status-pill warning">TOKEN REFRESH REQUIRED</span>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Cloud API endpoint for Phone Number <code>1280471305154568</code> (Pak Cloud Rdp).
         </p>
         <div className="status-action-row">
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Status: Outbound Token Refresh Required
+          <span style={{ fontSize: '12px', color: 'var(--amber)', fontWeight: 600 }}>
+            ⚠️ Outbound Token Expired (190)
           </span>
           <button
             type="button"
-            className="status-action-btn"
+            className="status-action-btn primary urgent-reconnect"
             onClick={() => setActiveModal('whatsapp')}
             aria-label="How to reconnect WhatsApp token"
           >
@@ -147,8 +154,10 @@ export default function StatusView() {
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Connected to Page <strong>PakCloud RDP</strong> (<code>929661113561523</code>) via Page Access Token.
         </p>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
-          24h Standard Messaging Window applies for automated AI replies.
+        <div className="status-card-footer">
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            24h Standard Messaging Window applies for automated AI replies.
+          </span>
         </div>
       </div>
 
@@ -165,9 +174,12 @@ export default function StatusView() {
           Direct DMs require adding your business account under Meta Developer API setup.
         </p>
         <div className="status-action-row">
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Optional DMs Setup
+          </span>
           <button
             type="button"
-            className="status-action-btn primary"
+            className="status-action-btn secondary"
             onClick={() => setActiveModal('instagram')}
             aria-label="Open Instagram token setup guide"
           >
@@ -188,8 +200,10 @@ export default function StatusView() {
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
           Primary: <code>gemini-flash-lite-latest</code> with automatic failover chain across 4 models on quota limits.
         </p>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
-          Knowledge base enriched with Windows 10/11/Server specs & Ur/Eng intent ladder.
+        <div className="status-card-footer">
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Knowledge base enriched with Windows specs & Urdu/Eng intent ladder.
+          </span>
         </div>
       </div>
 

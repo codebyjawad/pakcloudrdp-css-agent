@@ -56,6 +56,11 @@ export const conversationStore = {
       const last = history[history.length - 1] || null;
       const customerCount = history.filter((m) => m.sender === 'user').length;
       const aiCount = history.filter((m) => m.sender === 'agent').length;
+      const hasDeliveryError = history.some((m) => m.deliveryStatus === 'failed');
+      const hasTokenError = history.some(
+        (m) => m.deliveryStatus === 'failed' && /OAuthException|error_subcode[^}]*190|"code"\s*:\s*190/i.test(m.deliveryError || '')
+      );
+      const lastDeliveryError = [...history].reverse().find((m) => m.deliveryStatus === 'failed')?.deliveryError || null;
       return {
         sessionId: r.sessionId,
         channel: r.channel || 'WhatsApp',
@@ -68,7 +73,10 @@ export const conversationStore = {
         aiCount,
         lastMessage: last ? last.text : '',
         lastSender: last ? last.sender : '',
-        lastTime: r.updatedAt || last?.timestamp || ''
+        lastTime: r.updatedAt || last?.timestamp || '',
+        hasDeliveryError,
+        hasTokenError,
+        lastDeliveryError
       };
     });
   },

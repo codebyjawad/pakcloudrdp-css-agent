@@ -13,7 +13,11 @@ import {
   MessageSquare,
   Copy,
   FileText,
-  Check
+  Check,
+  AlertTriangle,
+  KeyRound,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import ChatBubble from './ChatBubble';
 import { api } from '../services/api';
@@ -25,7 +29,9 @@ export default function InboxView({
   activeChatId,
   setActiveChatId,
   externalFilter,
-  onClearExternalFilter
+  onClearExternalFilter,
+  hasGlobalTokenError = false,
+  onReconnectToken = null
 }) {
   const [filterChannel, setFilterChannel] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL', 'ESCALATED', 'PAUSED', 'AWAITING_REPLY', 'UNREAD'
@@ -47,6 +53,18 @@ export default function InboxView({
   const [customerNotes, setCustomerNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSavedStatus, setNotesSavedStatus] = useState(null); // 'saved' | 'error' | null
+
+  // Threads pane collapse
+  const [threadsCollapsed, setThreadsCollapsed] = useState(() => {
+    try { return localStorage.getItem('threadsCollapsed') === 'true'; } catch { return false; }
+  });
+  const handleToggleThreadsCollapse = () => {
+    setThreadsCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('threadsCollapsed', String(next)); } catch {}
+      return next;
+    });
+  };
 
   // Scroll management refs and states
   const messagesEndRef = useRef(null);
@@ -372,18 +390,29 @@ export default function InboxView({
   return (
     <div className={`inbox-container mobile-view-${mobileView}`}>
       {/* LEFT PANE: Thread List */}
-      <div className="threads-pane">
+      <div className={`threads-pane ${threadsCollapsed ? 'collapsed' : ''}`}>
         <div className="threads-search-bar">
-          <div className="search-input-wrap">
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search name, phone, or msg..."
-              aria-label="Search conversations by customer name, phone number, or message"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div className="threads-bar-top">
+            <div className="search-input-wrap">
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search name, phone, or msg..."
+                aria-label="Search conversations by customer name, phone number, or message"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="icon-btn threads-collapse-btn"
+              onClick={handleToggleThreadsCollapse}
+              title="Collapse chat list"
+              aria-label="Collapse chat list panel"
+            >
+              <PanelLeftClose size={15} aria-hidden="true" />
+            </button>
           </div>
 
           {/* Clean 4-chip non-wrapping Channel Filter Row */}
@@ -532,6 +561,18 @@ export default function InboxView({
 
       {/* RIGHT PANE: Active Conversation */}
       <div className="conversation-pane">
+        {/* Expand threads button — shown only when thread list is collapsed */}
+        {threadsCollapsed && (
+          <button
+            type="button"
+            className="icon-btn threads-expand-btn"
+            onClick={handleToggleThreadsCollapse}
+            title="Show chat list"
+            aria-label="Expand chat list panel"
+          >
+            <PanelLeftOpen size={15} aria-hidden="true" />
+          </button>
+        )}
         {activeThread ? (
           <>
             {/* Conversation Header */}
@@ -607,14 +648,14 @@ export default function InboxView({
                 {/* AI Pause / Resume Toggle */}
                 <button
                   type="button"
-                  className={`ai-pause-toggle ${aiPaused ? 'paused' : ''}`}
+                  className={`ai-pause-toggle ${aiPaused ? 'ai-paused' : 'ai-on'}`}
                   onClick={handleToggleAiPause}
                   title="Pause or Resume automatic AI replies for this customer"
                   aria-label={aiPaused ? 'Resume AI automatic replies' : 'Pause AI auto-replies (Owner manual mode)'}
                 >
                   {aiPaused ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
-                  <span>{aiPaused ? 'AI Paused (Owner Mode)' : 'AI Active'}</span>
-                  <div className={`switch-track ${aiPaused ? 'active' : ''}`} aria-hidden="true">
+                  <span className="ai-toggle-text">{aiPaused ? 'AI PAUSED' : 'AI ON'}</span>
+                  <div className={`switch-track ${!aiPaused ? 'active' : ''}`} aria-hidden="true">
                     <div className="switch-knob"></div>
                   </div>
                 </button>
@@ -630,6 +671,29 @@ export default function InboxView({
                 </button>
               </div>
             </div>
+
+            {/* In-inbox failure alert — only shown when token is confirmed expired */}
+            {hasGlobalTokenError && (
+              <div className="inbox-token-warning-banner" role="alert">
+                <div className="inbox-warning-left">
+                  <AlertTriangle size={16} className="inbox-warning-icon" aria-hidden="true" />
+                  <span>
+                    <strong>WhatsApp delivery is failing (OAuthException 190):</strong> Outbound messages cannot reach customers until the token is reconnected.
+                  </span>
+                </div>
+                {onReconnectToken && (
+                  <button
+                    type="button"
+                    className="inbox-reconnect-btn"
+                    onClick={onReconnectToken}
+                    aria-label="Reconnect WhatsApp token in Meta settings"
+                  >
+                    <KeyRound size={13} aria-hidden="true" />
+                    <span>Reconnect Token</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Messages Scroll Area (Clean container that pushes content rather than overlaying) */}
             <div className="chat-messages-wrapper">
@@ -879,7 +943,11 @@ export default function InboxView({
                         </button>
                       </div>
                     </div>
+                    <label htmlFor="customer-notes-textarea" className="visually-hidden">
+                      Private Customer Notes
+                    </label>
                     <textarea
+                      id="customer-notes-textarea"
                       className="notes-dock-textarea"
                       placeholder="Type private notes about this customer (e.g., active server IP, renewal due date, agreed payment method, special discounts, custom setup preferences)..."
                       value={customerNotes}
@@ -894,7 +962,11 @@ export default function InboxView({
             {/* Chat Input Bar */}
             <div className="chat-input-bar">
               <form onSubmit={handleSendMessage} className="input-form-row">
+                <label htmlFor="chat-reply-composer" className="visually-hidden">
+                  Reply to {activeDisplayName}
+                </label>
                 <textarea
+                  id="chat-reply-composer"
                   ref={textareaRef}
                   className="chat-textarea"
                   placeholder={`Reply to ${activeDisplayName} as Owner (bypasses AI)...`}
