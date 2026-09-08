@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search,
   Send,
@@ -12,7 +12,8 @@ import {
   Sparkles,
   X,
   Lightbulb,
-  ChevronLeft
+  ChevronLeft,
+  ChevronDown
 } from 'lucide-react';
 import ChatBubble from './ChatBubble';
 import { api } from '../services/api';
@@ -32,12 +33,43 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
   const [coachLoading, setCoachLoading] = useState(false);
   const [showCoach, setShowCoach] = useState(true);
 
+  // Scroll management refs and states
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const [hasNewUnseenMessages, setHasNewUnseenMessages] = useState(false);
+  const prevChatIdRef = useRef(activeChatId);
+  const prevHistoryLengthRef = useRef(0);
 
-  // Auto-scroll to bottom on message change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Check if user is scrolled near the bottom of the conversation
+  const checkIfAtBottom = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distanceFromBottom <= 80;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const atBottom = checkIfAtBottom();
+    isAtBottomRef.current = atBottom;
+    setShowScrollBottomBtn(!atBottom);
+    if (atBottom) {
+      setHasNewUnseenMessages(false);
+    }
+  }, [checkIfAtBottom]);
+
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior
+    });
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnseenMessages(false);
+  }, []);
 
   // Fetch AI Coach suggestions
   const fetchCoach = async (force = false) => {
@@ -53,18 +85,23 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
     }
   };
 
-  // Load thread whenever activeChatId changes
+  // Select first chat if none selected initially
   useEffect(() => {
-    if (!activeChatId) {
-      if (chats.length > 0) {
-        setActiveChatId(chats[0].sessionId);
-      }
-      return;
+    if (!activeChatId && chats.length > 0) {
+      setActiveChatId(chats[0].sessionId);
     }
+  }, [activeChatId, chats, setActiveChatId]);
+
+  // Load thread whenever activeChatId changes (isolated from chats polling)
+  useEffect(() => {
+    if (!activeChatId) return;
 
     let isMounted = true;
     setLoadingThread(true);
     setCoachData(null);
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnseenMessages(false);
 
     api.getChatThread(activeChatId)
       .then((data) => {
@@ -73,6 +110,12 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
           setAiPaused(Boolean(data.chat.aiPaused));
           // Load coach suggestions
           fetchCoach(false);
+          // When opening a new conversation, instantly jump to bottom
+          requestAnimationFrame(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          });
         }
       })
       .catch((err) => console.error('Failed to load thread:', err))
@@ -81,11 +124,71 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
       });
 
     return () => { isMounted = false; };
-  }, [activeChatId, chats]);
+  }, [activeChatId]);
+
+  // Silent background sync when active conversation gets new messages in chats poll
+  const activeChatSummary = chats.find((c) => c.sessionId === activeChatId);
+  const activeChatSummaryKey = activeChatSummary
+    ? `${activeChatSummary.messageCount}_${activeChatSummary.lastTime}_${activeChatSummary.lastMessage}`
+    : '';
 
   useEffect(() => {
-    scrollToBottom();
-  }, [activeThread?.history]);
+    if (!activeChatId || !activeChatSummaryKey || !activeThread) return;
+
+    const currentCount = activeThread.history?.length || 0;
+    const summaryCount = activeChatSummary?.messageCount || 0;
+    const currentLast = activeThread.history?.[currentCount - 1]?.text;
+    const summaryLast = activeChatSummary?.lastMessage;
+
+    // Only silently re-fetch if message count or last message actually changed
+    if (summaryCount !== currentCount || (summaryLast && summaryLast !== currentLast)) {
+      api.getChatThread(activeChatId)
+        .then((data) => {
+          if (data?.chat) {
+            setActiveThread(data.chat);
+            setAiPaused(Boolean(data.chat.aiPaused));
+          }
+        })
+        .catch((err) => console.error('Silent thread sync error:', err));
+    }
+  }, [activeChatSummaryKey, activeChatId]);
+
+  // Auto-scroll controller: only auto-scrolls down if user is ALREADY at bottom
+  // If user scrolled up to see previous messages, their view stays undisturbed.
+  useEffect(() => {
+    const currentHistory = activeThread?.history || [];
+    const historyLength = currentHistory.length;
+    const isDifferentChat = prevChatIdRef.current !== activeChatId;
+    const hasNewMessages = historyLength > prevHistoryLengthRef.current;
+
+    prevChatIdRef.current = activeChatId;
+    prevHistoryLengthRef.current = historyLength;
+
+    if (isDifferentChat) {
+      requestAnimationFrame(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      });
+      return;
+    }
+
+    if (hasNewMessages) {
+      if (isAtBottomRef.current) {
+        requestAnimationFrame(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTo({
+              top: messagesContainerRef.current.scrollHeight,
+              behavior: 'smooth'
+            });
+          }
+        });
+      } else {
+        // User has scrolled up to see previous chat; do not force scroll down!
+        setHasNewUnseenMessages(true);
+      }
+    }
+  }, [activeThread?.history, activeChatId]);
 
   // Handle manual reply sending
   const handleSendMessage = async (e) => {
@@ -104,6 +207,10 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
       if (res && res.success === false) {
         alert(`⚠️ Delivery Failed!\n\nThe message was recorded in the inbox, but Meta rejected delivery to ${activeThread?.channel || 'WhatsApp'}:\n"${res.error || 'Token expired or invalid'}".\n\nPlease verify your Meta Access Token.`);
       }
+      isAtBottomRef.current = true;
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
       onRefresh?.();
     } catch (err) {
       alert(`Could not send message: ${err.message}`);
@@ -138,7 +245,13 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
     try {
       await api.sendFollowupTemplate(activeChatId);
       const data = await api.getChatThread(activeChatId);
-      if (data?.chat) setActiveThread(data.chat);
+      if (data?.chat) {
+        setActiveThread(data.chat);
+        isAtBottomRef.current = true;
+        requestAnimationFrame(() => {
+          scrollToBottom('smooth');
+        });
+      }
       onRefresh?.();
     } catch (err) {
       alert(`Follow-up error: ${err.message}`);
@@ -449,17 +562,36 @@ export default function InboxView({ chats, onRefresh, activeChatId, setActiveCha
             )}
 
             {/* Messages Scroll Area */}
-            <div className="chat-messages-area">
-              {activeThread.history && activeThread.history.length > 0 ? (
-                activeThread.history.map((msg, idx) => (
-                  <ChatBubble key={msg.id || idx} message={msg} />
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto' }}>
-                  No message history yet.
-                </div>
+            <div className="chat-messages-wrapper">
+              <div
+                className="chat-messages-area"
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+              >
+                {activeThread.history && activeThread.history.length > 0 ? (
+                  activeThread.history.map((msg, idx) => (
+                    <ChatBubble key={msg.id || idx} message={msg} />
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto' }}>
+                    No message history yet.
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Floating Scroll to Bottom / New Messages indicator */}
+              {showScrollBottomBtn && (
+                <button
+                  type="button"
+                  className={`scroll-bottom-btn ${hasNewUnseenMessages ? 'has-new' : ''}`}
+                  onClick={() => scrollToBottom('smooth')}
+                  title="Scroll to latest messages"
+                >
+                  <ChevronDown size={15} />
+                  <span>{hasNewUnseenMessages ? 'New messages ↓' : 'Latest'}</span>
+                </button>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Chat Input & Fast Canned Actions */}

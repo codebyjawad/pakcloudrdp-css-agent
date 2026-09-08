@@ -701,6 +701,14 @@ body {
 }
 
 /* Chat Messages Scrollable Area */
+.chat-messages-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .chat-messages-area {
   flex: 1;
   overflow-y: auto;
@@ -708,6 +716,48 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* Floating Scroll to Bottom / New Message Pill */
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 24px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-bottom-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-color);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.scroll-bottom-btn.has-new {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45);
+}
+
+.scroll-bottom-btn.has-new:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.6);
 }
 
 /* Message Bubble */
